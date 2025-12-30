@@ -11,7 +11,7 @@ set -e
 
 # Configuration
 BUILD="4.0.0"
-REPO="andreapollastri/cipi"
+REPO="JoshTrebilco/cipi"
 BRANCH="${1:-latest}"
 
 # Colors

@@ -4,7 +4,7 @@
 # Auto-Update Functions
 #############################################
 
-GITHUB_REPO="andreapollastri/cipi"
+GITHUB_REPO="JoshTrebilco/cipi"
 GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}"
 
