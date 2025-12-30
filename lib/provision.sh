@@ -468,16 +468,12 @@ provision_create() {
 provision_delete() {
     local username=""
     local dbname=""
-    local force=false
     
     # Parse arguments
     for arg in "$@"; do
         case $arg in
             --dbname=*)
                 dbname="${arg#*=}"
-                ;;
-            --force)
-                force=true
                 ;;
             *)
                 if [ -z "$username" ]; then
@@ -489,7 +485,7 @@ provision_delete() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi provision delete <username> [--dbname=DBNAME] [--force]"
+        echo "Usage: cipi provision delete <username> [--dbname=DBNAME]"
         exit 1
     fi
     
@@ -513,80 +509,26 @@ provision_delete() {
     local domain=$(get_domain_by_app "$username")
     
     # Show what will be deleted
-    echo -e "${YELLOW}${BOLD}Warning: This will permanently delete:${NC}"
+    echo -e "${BOLD}Provision Delete${NC}"
+    echo "─────────────────────────────────────"
+    echo -e "The following resources will be deleted:"
     echo -e "  • App: ${CYAN}$username${NC}"
     echo -e "  • Home directory: ${CYAN}/home/$username${NC}"
     [ -n "$domain" ] && echo -e "  • Domain: ${CYAN}$domain${NC}"
     [ -n "$dbname" ] && echo -e "  • Database: ${CYAN}$dbname${NC}"
     echo ""
     
-    # Confirm deletion
-    if [ "$force" != "true" ]; then
-        read -p "Type the username to confirm deletion: " confirm
-        
-        if [ "$confirm" != "$username" ]; then
-            echo "Deletion cancelled."
-            exit 0
-        fi
-    fi
+    # Delete app (has its own confirmation)
+    app_delete "$username"
     
-    echo ""
-    echo -e "${CYAN}Deleting resources...${NC}"
-    
-    # Delete database first (if specified)
+    # Delete database if specified (has its own confirmation)
     if [ -n "$dbname" ]; then
         echo ""
-        echo -e "  → Deleting database '$dbname'..."
-        
-        # Get database data
-        local db_data=$(json_get "${DATABASES_FILE}" "$dbname")
-        local db_username=$(echo "$db_data" | jq -r '.username')
-        local root_password=$(get_mysql_root_password)
-        
-        # Delete database and user
-        mysql -u root -p"${root_password}" <<EOF 2>/dev/null
-DROP DATABASE IF EXISTS \`${dbname}\`;
-DROP USER IF EXISTS '${db_username}'@'localhost';
-FLUSH PRIVILEGES;
-EOF
-        
-        # Remove from storage
-        json_delete "${DATABASES_FILE}" "$dbname"
-        echo -e "  → Database deleted"
+        database_delete "$dbname"
     fi
-    
-    # Delete app (this handles domains, nginx, php pool, system user)
-    echo ""
-    echo -e "  → Deleting app '$username'..."
-    
-    local vhost=$(json_get "${APPS_FILE}" "$username")
-    local php_version=$(echo "$vhost" | jq -r '.php_version')
-    
-    # Delete associated domains
-    delete_domains_by_app "$username"
-    
-    # Delete Nginx configuration
-    delete_nginx_config "$username"
-    
-    # Delete PHP-FPM pool
-    delete_php_pool "$username" "$php_version"
-    
-    # Delete system user and home directory
-    delete_system_user "$username"
-    
-    # Delete log rotation config
-    rm -f "/etc/logrotate.d/cipi-$username"
-    
-    # Remove from storage
-    json_delete "${APPS_FILE}" "$username"
-    
-    # Reload nginx
-    nginx_reload
     
     echo ""
     echo -e "${GREEN}${BOLD}Provision deleted successfully!${NC}"
-    echo -e "  • App '$username' deleted"
-    [ -n "$dbname" ] && echo -e "  • Database '$dbname' deleted"
     echo ""
 }
 
