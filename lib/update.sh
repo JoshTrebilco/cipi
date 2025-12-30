@@ -181,6 +181,9 @@ EOF
         echo "Backup saved at: ${CIPI_LIB_DIR}.backup"
     fi
     echo ""
+    
+    # Exit after successful update to prevent any further execution
+    exit 0
 }
 
 # Check for updates (used by cron)
