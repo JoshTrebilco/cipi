@@ -64,7 +64,7 @@ if [ -f "artisan" ]; then
     # Run npm if needed
     if [ -f "package.json" ]; then
         echo "→ Installing NPM dependencies..."
-        npm install
+        npm ci
         
         if grep -q "build" package.json; then
             echo "→ Building assets..."
