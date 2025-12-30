@@ -362,16 +362,16 @@ provision_create() {
         echo ""
         echo -e "${CYAN}Step ${step}/${total_steps}: Setting up SSL certificate...${NC}"
         
-        # Run SSL script
+        # Run SSL script (run directly since we're already root)
         echo "  → Requesting Let's Encrypt certificate..."
         if [ -f "$home_dir/ssl.sh" ]; then
-            sudo -u "$username" "$home_dir/ssl.sh" 2>&1 | grep -v "^$" | head -10
+            "$home_dir/ssl.sh" 2>&1 | grep -v "^$" | head -10
             
             if [ ${PIPESTATUS[0]} -eq 0 ]; then
                 echo "  → SSL certificate installed"
             else
                 echo -e "  → ${YELLOW}SSL setup may require DNS configuration${NC}"
-                echo -e "  → ${YELLOW}Run manually: sudo -u $username $home_dir/ssl.sh${NC}"
+                echo -e "  → ${YELLOW}Run manually: $home_dir/ssl.sh${NC}"
             fi
         else
             echo -e "  → ${YELLOW}SSL script not found${NC}"
