@@ -143,7 +143,7 @@ php_list() {
     done
     
     echo ""
-    echo -e "${YELLOW}Note:${NC} Use 'cipi virtualhost edit <user> --php=X.X' to change PHP version for a specific virtual host"
+    echo -e "${YELLOW}Note:${NC} Use 'cipi app edit <username> --php=X.X' to change PHP version for a specific app"
     echo -e "      Use 'cipi php switch X.X' to change the global CLI version"
     echo ""
 }
