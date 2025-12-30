@@ -13,7 +13,6 @@ provision_create() {
     local domain=""
     local aliases=""
     local dbname=""
-    local app_env="production"
     local interactive=true
     
     # Default: everything enabled
@@ -54,9 +53,6 @@ provision_create() {
                 ;;
             --dbname=*)
                 dbname="${arg#*=}"
-                ;;
-            --env=*)
-                app_env="${arg#*=}"
                 ;;
             --skip-db)
                 skip_db=true
@@ -175,12 +171,6 @@ provision_create() {
             fi
         fi
         
-        # App environment prompt
-        if [ "$skip_env" = false ]; then
-            read -p "APP_ENV [production]: " app_env
-            app_env=${app_env:-production}
-        fi
-        
         # Skip SSL prompt (only if domain is being created)
         if [ "$skip_domain" = false ] && [ "$skip_ssl_set" = false ]; then
             read -p "Setup SSL certificate? (Y/n): " setup_ssl
@@ -231,7 +221,6 @@ provision_create() {
         echo "  --php=VERSION            PHP version (default: 8.4)"
         echo "  --aliases=ALIASES        Comma-separated domain aliases"
         echo "  --dbname=DBNAME          Database name (defaults to username)"
-        echo "  --env=ENV                APP_ENV value (default: production)"
         echo "  --ssl-email=EMAIL        Email for Let's Encrypt certificate"
         echo ""
         echo "Skip flags (all features enabled by default):"
@@ -364,7 +353,7 @@ provision_create() {
         fi
         
         # Update .env with settings
-        update_env_file "$env_file" "$username" "$domain" "$dbname_final" "$db_username" "$db_password" "$app_env" "$skip_domain"
+        update_env_file "$env_file" "$username" "$domain" "$dbname_final" "$db_username" "$db_password" "$skip_domain"
         ((step++))
     fi
     
@@ -586,8 +575,7 @@ update_env_file() {
     local dbname=$4
     local db_username=$5
     local db_password=$6
-    local app_env=$7
-    local skip_domain=$8
+    local skip_domain=$7
     
     # Function to set or update an env variable
     set_env_var() {
@@ -619,18 +607,14 @@ update_env_file() {
         echo "  → Updated database settings in .env"
     fi
     
-    # Update app settings
-    set_env_var "$env_file" "APP_ENV" "$app_env"
+    # Update app settings (always production)
+    set_env_var "$env_file" "APP_ENV" "production"
+    set_env_var "$env_file" "APP_DEBUG" "false"
+    echo "  → Set APP_ENV=production, APP_DEBUG=false"
     
     if [ "$skip_domain" = false ] && [ -n "$domain" ]; then
         set_env_var "$env_file" "APP_URL" "https://${domain}"
         echo "  → Updated APP_URL in .env"
-    fi
-    
-    # Set production defaults
-    if [ "$app_env" = "production" ]; then
-        set_env_var "$env_file" "APP_DEBUG" "false"
-        echo "  → Set APP_DEBUG=false for production"
     fi
     
     # Configure Redis if available
