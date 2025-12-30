@@ -72,13 +72,37 @@ check_ubuntu_version() {
     fi
 }
 
-# Create system user
+# Create system user with web server access
 create_system_user() {
     local username=$1
     local password=$2
     
+    # Check if user already exists
+    if id "$username" &>/dev/null 2>&1; then
+        echo -e "${RED}Error: User '$username' already exists${NC}" >&2
+        return 1
+    fi
+    
+    # Clean up group if it exists from a previous deletion
+    if getent group "$username" >/dev/null 2>&1; then
+        groupdel "$username" 2>/dev/null
+    fi
+    
+    # Create the user (this also creates the primary group with same name)
     useradd -m -s /bin/bash "$username"
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+    
+    # Set password
     echo "$username:$password" | chpasswd
+    if [ $? -ne 0 ]; then
+        userdel -r "$username" 2>/dev/null
+        return 1
+    fi
+    
+    # Add www-data to user's group so nginx can read files
+    usermod -a -G "$username" www-data
     
     return $?
 }
@@ -86,8 +110,21 @@ create_system_user() {
 # Delete system user
 delete_system_user() {
     local username=$1
+    
+    # Remove www-data from user's group before deleting user
+    if id "$username" &>/dev/null && groups www-data 2>/dev/null | grep -q "\b${username}\b"; then
+        gpasswd -d www-data "$username" 2>/dev/null
+    fi
+    
+    # Delete the user (this should also remove the group if it's the user's primary group)
     userdel -r "$username" 2>/dev/null
-    return $?
+    
+    # Clean up group if it still exists (sometimes groups persist after user deletion)
+    if getent group "$username" >/dev/null 2>&1; then
+        groupdel "$username" 2>/dev/null
+    fi
+    
+    return 0
 }
 
 # Restart service

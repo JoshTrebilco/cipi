@@ -101,16 +101,12 @@ app_create() {
     # Generate password
     local password=$(generate_password 24)
     
-    # Create system user
+    # Create system user (includes group setup and www-data access)
     echo "  → Creating system user..."
     if ! create_system_user "$username" "$password"; then
         echo -e "${RED}Error: Failed to create system user${NC}"
         exit 1
     fi
-    
-    # Add www-data to user's group so nginx can read files
-    echo "  → Configuring web server access..."
-    usermod -a -G "$username" www-data
     
     # Create directory structure
     echo "  → Creating directory structure..."
