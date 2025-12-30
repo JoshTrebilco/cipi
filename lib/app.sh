@@ -591,6 +591,10 @@ app_delete() {
     echo "  → Deleting system user and files..."
     delete_system_user "$username"
     
+    # Delete log rotation config
+    echo "  → Deleting log rotation config..."
+    rm -f "/etc/logrotate.d/cipi-$username"
+    
     # Remove from storage
     json_delete "${APPS_FILE}" "$username"
     

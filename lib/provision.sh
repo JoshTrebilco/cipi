@@ -574,6 +574,9 @@ EOF
     # Delete system user and home directory
     delete_system_user "$username"
     
+    # Delete log rotation config
+    rm -f "/etc/logrotate.d/cipi-$username"
+    
     # Remove from storage
     json_delete "${APPS_FILE}" "$username"
     
