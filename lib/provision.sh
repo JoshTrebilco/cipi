@@ -368,7 +368,27 @@ provision_create() {
             "$home_dir/ssl.sh" 2>&1 | grep -v "^$" | head -10
             
             if [ ${PIPESTATUS[0]} -eq 0 ]; then
-                echo "  → SSL certificate installed"
+                # Check if certificate was actually obtained
+                if [ -d "/etc/letsencrypt/live/$domain" ]; then
+                    echo "  → Updating Nginx configuration with SSL..."
+                    
+                    # Get aliases from domain storage
+                    local domain_data=$(json_get "${DOMAINS_FILE}" "$domain")
+                    local aliases_str=$(echo "$domain_data" | jq -r '.aliases[]?' 2>/dev/null | tr '\n' ' ')
+                    
+                    # Update nginx config with SSL
+                    if add_ssl_to_nginx "$username" "$domain" "$aliases_str" "$php_version"; then
+                        # Reload nginx
+                        nginx_reload
+                        echo "  → SSL certificate installed and configured"
+                    else
+                        echo -e "  → ${YELLOW}Failed to update Nginx SSL configuration${NC}"
+                        echo -e "  → ${YELLOW}Run manually: sudo cipi domain create --domain=$domain --app=$username${NC}"
+                    fi
+                else
+                    echo -e "  → ${YELLOW}Certificate directory not found, SSL may need manual configuration${NC}"
+                    echo -e "  → ${YELLOW}Run manually: $home_dir/ssl.sh${NC}"
+                fi
             else
                 echo -e "  → ${YELLOW}SSL setup may require DNS configuration${NC}"
                 echo -e "  → ${YELLOW}Run manually: $home_dir/ssl.sh${NC}"
