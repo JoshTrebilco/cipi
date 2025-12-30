@@ -603,10 +603,14 @@ update_env_file() {
         local key=$2
         local value=$3
         
-        # Check if key exists
+        # Check if key exists (uncommented)
         if grep -q "^${key}=" "$file" 2>/dev/null; then
             # Update existing value using | as delimiter to handle special chars
             sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+        # Check if key exists but is commented out (# KEY= or #KEY=)
+        elif grep -q "^#[[:space:]]*${key}=" "$file" 2>/dev/null; then
+            # Uncomment and set the value
+            sed -i "s|^#[[:space:]]*${key}=.*|${key}=${value}|" "$file"
         else
             # Append new value
             echo "${key}=${value}" >> "$file"
