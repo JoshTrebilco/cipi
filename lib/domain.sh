@@ -50,8 +50,9 @@ domain_create() {
             echo "Select virtual host:"
             
             # Get available apps (those without domains)
+            init_storage
             local available_vhosts=()
-            local all_vhosts=($(json_keys "${VIRTUALHOSTS_FILE}"))
+            local all_vhosts=($(json_keys "${APPS_FILE}"))
             
             for vh in "${all_vhosts[@]}"; do
                 if [ -z "$(get_domain_by_app "$vh")" ]; then
@@ -64,7 +65,7 @@ domain_create() {
                 echo ""
                 app_create
                 # Get the last created app
-                app=$(json_keys "${VIRTUALHOSTS_FILE}" | tail -n 1)
+                app=$(json_keys "${APPS_FILE}" | tail -n 1)
             else
                 local i=1
                 for vh in "${available_vhosts[@]}"; do
@@ -159,7 +160,8 @@ domain_create() {
     fi
     
     # Check if app exists
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$app"; then
+    init_storage
+    if ! json_has_key "${APPS_FILE}" "$app"; then
         echo -e "${RED}Error: Virtual host '$app' not found${NC}"
         exit 1
     fi
@@ -168,7 +170,7 @@ domain_create() {
     echo -e "${CYAN}Assigning domain...${NC}"
     
     # Get app data
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$app")
+    local vhost=$(json_get "${APPS_FILE}" "$app")
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     
     # Build aliases string for nginx
@@ -305,7 +307,8 @@ domain_delete() {
     
     # Reset Nginx configuration to use username only
     echo -e "${CYAN}→ Resetting Nginx configuration...${NC}"
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$app")
+    init_storage
+    local vhost=$(json_get "${APPS_FILE}" "$app")
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     
     create_nginx_config "$app" "" "$php_version"
@@ -383,7 +386,8 @@ alias_add() {
     
     # Update Nginx
     echo -e "  → Updating Nginx configuration..."
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$app")
+    init_storage
+    local vhost=$(json_get "${APPS_FILE}" "$app")
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     
     if [ "$has_ssl" = "true" ]; then
@@ -461,7 +465,8 @@ alias_remove() {
     
     # Update Nginx
     echo -e "  → Updating Nginx configuration..."
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$app")
+    init_storage
+    local vhost=$(json_get "${APPS_FILE}" "$app")
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     
     if [ "$has_ssl" = "true" ]; then

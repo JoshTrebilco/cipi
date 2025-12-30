@@ -80,8 +80,11 @@ app_create() {
         exit 1
     fi
     
+    # Initialize storage
+    init_storage
+    
     # Check if app already exists
-    if json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    if json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' already exists${NC}"
         exit 1
     fi
@@ -177,7 +180,7 @@ app_create() {
 }
 EOF
 )
-    json_set "${VIRTUALHOSTS_FILE}" "$username" "$app_data"
+    json_set "${APPS_FILE}" "$username" "$app_data"
     
     # Display summary
     echo ""
@@ -212,7 +215,7 @@ app_list() {
     echo "─────────────────────────────────────"
     echo ""
     
-    local apps=$(json_keys "${VIRTUALHOSTS_FILE}")
+    local apps=$(json_keys "${APPS_FILE}")
     
     if [ -z "$apps" ]; then
         echo "No virtual hosts found."
@@ -224,7 +227,7 @@ app_list() {
     echo "───────────────────────────────────────────────────────────"
     
     for username in $apps; do
-        local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$username")
+        local vhost=$(json_get "${APPS_FILE}" "$username")
         local php_version=$(echo "$vhost" | jq -r '.php_version')
         local domain=$(get_domain_by_app "$username")
         domain=${domain:-"(no domain)"}
@@ -245,12 +248,14 @@ app_show() {
         exit 1
     fi
     
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    init_storage
+    
+    if ! json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' not found${NC}"
         exit 1
     fi
     
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$username")
+    local vhost=$(json_get "${APPS_FILE}" "$username")
     local home_dir=$(echo "$vhost" | jq -r '.home_dir')
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     local repository=$(echo "$vhost" | jq -r '.repository')
@@ -306,13 +311,15 @@ app_edit() {
         exit 1
     fi
     
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    init_storage
+    
+    if ! json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' not found${NC}"
         exit 1
     fi
     
     # Get current app data
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$username")
+    local vhost=$(json_get "${APPS_FILE}" "$username")
     local current_php=$(echo "$vhost" | jq -r '.php_version')
     local home_dir=$(echo "$vhost" | jq -r '.home_dir')
     
@@ -356,7 +363,7 @@ app_edit() {
         echo "$vhost" | jq ".php_version = \"$new_php_version\"" > "$tmp"
         local updated_vhost=$(cat "$tmp")
         rm "$tmp"
-        json_set "${VIRTUALHOSTS_FILE}" "$username" "$updated_vhost"
+        json_set "${APPS_FILE}" "$username" "$updated_vhost"
         
         # Reload services
         echo "  → Reloading services..."
@@ -384,12 +391,14 @@ app_env() {
         exit 1
     fi
     
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    init_storage
+    
+    if ! json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' not found${NC}"
         exit 1
     fi
     
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$username")
+    local vhost=$(json_get "${APPS_FILE}" "$username")
     local home_dir=$(echo "$vhost" | jq -r '.home_dir')
     local env_file="$home_dir/wwwroot/.env"
     
@@ -492,7 +501,9 @@ app_password() {
         exit 1
     fi
     
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    init_storage
+    
+    if ! json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' not found${NC}"
         exit 1
     fi
@@ -542,7 +553,9 @@ app_delete() {
         exit 1
     fi
     
-    if ! json_has_key "${VIRTUALHOSTS_FILE}" "$username"; then
+    init_storage
+    
+    if ! json_has_key "${APPS_FILE}" "$username"; then
         echo -e "${RED}Error: App '$username' not found${NC}"
         exit 1
     fi
@@ -559,7 +572,7 @@ app_delete() {
     echo ""
     echo -e "${CYAN}Deleting virtual host...${NC}"
     
-    local vhost=$(json_get "${VIRTUALHOSTS_FILE}" "$username")
+    local vhost=$(json_get "${APPS_FILE}" "$username")
     local php_version=$(echo "$vhost" | jq -r '.php_version')
     
     # Delete associated domains
@@ -579,7 +592,7 @@ app_delete() {
     delete_system_user "$username"
     
     # Remove from storage
-    json_delete "${VIRTUALHOSTS_FILE}" "$username"
+    json_delete "${APPS_FILE}" "$username"
     
     # Reload nginx
     echo "  → Reloading Nginx..."
@@ -593,6 +606,7 @@ app_delete() {
 # Helper: Get domain by app
 get_domain_by_app() {
     local username=$1
+    init_storage
     local domains=$(json_read "${DOMAINS_FILE}")
     
     echo "$domains" | jq -r "to_entries[] | select(.value.app == \"$username\") | .key" | head -n 1
@@ -601,6 +615,7 @@ get_domain_by_app() {
 # Helper: Get aliases by app
 get_aliases_by_app() {
     local username=$1
+    init_storage
     local domain=$(get_domain_by_app "$username")
     
     if [ -n "$domain" ]; then
@@ -612,6 +627,7 @@ get_aliases_by_app() {
 # Helper: Delete domains by app
 delete_domains_by_app() {
     local username=$1
+    init_storage
     local domains=$(json_read "${DOMAINS_FILE}")
     
     local domain_keys=$(echo "$domains" | jq -r "to_entries[] | select(.value.app == \"$username\") | .key")
