@@ -10,7 +10,7 @@
 set -e
 
 # Paths
-CIPI_DIR="/usr/local/cipi"
+CIPI_DIR="/opt/cipi"
 CIPI_LIB_DIR="${CIPI_DIR}/lib"
 CIPI_DATA_DIR="/etc/cipi"
 CIPI_VERSION="4.0.0"
