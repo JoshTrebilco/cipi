@@ -55,6 +55,15 @@ show_logo() {
 show_version() {
     show_logo
     echo -e "Version: ${CYAN}${CIPI_VERSION}${NC}"
+    
+    # Show commit hash if available
+    if [ -f "/etc/cipi/version.json" ]; then
+        local commit=$(jq -r '.commit // empty' /etc/cipi/version.json 2>/dev/null)
+        if [ -n "$commit" ] && [ "$commit" != "null" ]; then
+            echo -e "Commit:  ${CYAN}${commit:0:7}${NC}"
+        fi
+    fi
+    
     echo ""
 }
 

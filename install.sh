@@ -635,6 +635,11 @@ install_cipi() {
     cd /tmp
     git clone -b "$BRANCH" "https://github.com/${REPO}.git" cipi-install
     
+    # Get commit hash
+    cd cipi-install
+    INSTALLED_COMMIT=$(git rev-parse HEAD)
+    cd /tmp
+    
     # Copy files
     cp cipi-install/cipi /usr/local/bin/cipi
     cp -r cipi-install/lib/* /opt/cipi/lib/
@@ -652,6 +657,16 @@ install_cipi() {
             chmod 600 "/etc/cipi/$file"
         fi
     done
+    
+    # Create version file with commit hash
+    cat > /etc/cipi/version.json <<EOF
+{
+  "commit": "${INSTALLED_COMMIT}",
+  "branch": "${BRANCH}",
+  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+    chmod 600 /etc/cipi/version.json
     
     # Cleanup
     rm -rf /tmp/cipi-install

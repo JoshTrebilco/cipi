@@ -5,22 +5,51 @@
 #############################################
 
 GITHUB_REPO="JoshTrebilco/cipi"
-GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
+GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}"
+BRANCH="latest"
+VERSION_FILE="/etc/cipi/version.json"
 
-# Get latest version from GitHub
-get_latest_version() {
-    curl -s "${GITHUB_API}" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
+# Get latest commit from GitHub branch
+get_latest_commit() {
+    curl -s "${GITHUB_API}/branches/${BRANCH}" | jq -r '.commit.sha' 2>/dev/null
 }
 
-# Get current version
-get_current_version() {
-    echo "${CIPI_VERSION}"
+# Get current commit from version file
+get_current_commit() {
+    if [ -f "${VERSION_FILE}" ]; then
+        jq -r '.commit // empty' "${VERSION_FILE}" 2>/dev/null
+    else
+        echo ""
+    fi
 }
 
-# Compare versions
-version_gt() {
-    test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
+# Count commits behind latest
+count_commits_behind() {
+    local current_commit=$1
+    local latest_commit=$2
+    
+    if [ -z "$current_commit" ] || [ "$current_commit" = "null" ] || [ -z "$latest_commit" ]; then
+        echo "unknown"
+        return
+    fi
+    
+    # If commits are the same, return 0
+    if [ "$current_commit" = "$latest_commit" ]; then
+        echo "0"
+        return
+    fi
+    
+    # Use GitHub compare API to count commits
+    # Format: base...head compares base to head, ahead_by tells us how many commits head is ahead of base
+    local compare_result=$(curl -s "${GITHUB_API}/compare/${current_commit}...${latest_commit}" 2>/dev/null)
+    local ahead=$(echo "$compare_result" | jq -r '.ahead_by // 0' 2>/dev/null)
+    
+    if [ "$ahead" = "null" ] || [ -z "$ahead" ]; then
+        echo "unknown"
+    else
+        echo "$ahead"
+    fi
 }
 
 # Update Cipi
@@ -29,26 +58,42 @@ update_cipi() {
     echo "─────────────────────────────────────"
     echo ""
     
-    local current_version=$(get_current_version)
-    echo -e "Current version: ${CYAN}${current_version}${NC}"
-    
+    local current_commit=$(get_current_commit)
     echo -e "${CYAN}Checking for updates...${NC}"
-    local latest_version=$(get_latest_version)
+    local latest_commit=$(get_latest_commit)
     
-    if [ -z "$latest_version" ]; then
-        echo -e "${RED}Error: Could not fetch latest version${NC}"
+    if [ -z "$latest_commit" ] || [ "$latest_commit" = "null" ]; then
+        echo -e "${RED}Error: Could not fetch latest commit${NC}"
         exit 1
     fi
     
-    echo -e "Latest version:  ${GREEN}${latest_version}${NC}"
+    # Display current status
+    if [ -n "$current_commit" ] && [ "$current_commit" != "null" ]; then
+        local commits_behind=$(count_commits_behind "$current_commit" "$latest_commit")
+        echo -e "Current commit: ${CYAN}${current_commit:0:7}${NC}"
+        if [ "$commits_behind" != "unknown" ] && [ "$commits_behind" != "0" ]; then
+            echo -e "Commits behind: ${YELLOW}${commits_behind}${NC}"
+        fi
+    else
+        echo -e "Current commit: ${YELLOW}Unknown${NC}"
+    fi
+    
+    echo -e "Latest commit:  ${GREEN}${latest_commit:0:7}${NC}"
     echo ""
     
-    if ! version_gt "$latest_version" "$current_version"; then
+    # Check if update is needed
+    if [ -n "$current_commit" ] && [ "$current_commit" != "null" ] && [ "$current_commit" = "$latest_commit" ]; then
         echo -e "${GREEN}Cipi is already up to date!${NC}"
         exit 0
     fi
     
-    echo -e "${YELLOW}A new version is available!${NC}"
+    local commits_behind=$(count_commits_behind "$current_commit" "$latest_commit")
+    if [ "$commits_behind" != "unknown" ] && [ "$commits_behind" != "0" ]; then
+        echo -e "${YELLOW}A new version is available! (${commits_behind} commit(s) behind)${NC}"
+    else
+        echo -e "${YELLOW}A new version is available!${NC}"
+    fi
+    
     read -p "Do you want to update? (y/N): " confirm
     
     if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
@@ -62,10 +107,10 @@ update_cipi() {
     # Create temporary directory
     local tmp_dir=$(mktemp -d)
     
-    # Download latest release
-    echo "  → Downloading latest release..."
+    # Download latest branch archive
+    echo "  → Downloading latest version..."
     cd "$tmp_dir"
-    curl -sL "https://github.com/${GITHUB_REPO}/archive/refs/tags/${latest_version}.tar.gz" | tar xz
+    curl -sL "https://github.com/${GITHUB_REPO}/archive/refs/heads/${BRANCH}.tar.gz" | tar xz
     
     if [ $? -ne 0 ]; then
         echo -e "${RED}Error: Failed to download update${NC}"
@@ -84,12 +129,42 @@ update_cipi() {
     
     # Backup current installation
     echo "  → Creating backup..."
-    cp -r "${CIPI_DIR}" "${CIPI_DIR}.backup"
+    if [ -f /usr/local/bin/cipi ]; then
+        cp /usr/local/bin/cipi /usr/local/bin/cipi.backup
+    fi
+    if [ -d "${CIPI_LIB_DIR}" ]; then
+        cp -r "${CIPI_LIB_DIR}" "${CIPI_LIB_DIR}.backup"
+    fi
     
     # Install new version
     echo "  → Installing new version..."
-    cp -r "${tmp_dir}/${extract_dir}"/* "${CIPI_DIR}/"
-    chmod +x "${CIPI_DIR}/cipi"
+    
+    # Copy main script
+    if [ -f "${tmp_dir}/${extract_dir}/cipi" ]; then
+        cp "${tmp_dir}/${extract_dir}/cipi" /usr/local/bin/cipi
+        chmod 700 /usr/local/bin/cipi
+        chown root:root /usr/local/bin/cipi
+    fi
+    
+    # Copy library files
+    if [ -d "${tmp_dir}/${extract_dir}/lib" ]; then
+        mkdir -p "${CIPI_LIB_DIR}"
+        cp -r "${tmp_dir}/${extract_dir}/lib"/* "${CIPI_LIB_DIR}/"
+        chmod 700 "${CIPI_LIB_DIR}"/*.sh
+        chown -R root:root "${CIPI_LIB_DIR}"
+    fi
+    
+    # Update version file with new commit
+    echo "  → Updating version information..."
+    mkdir -p "$(dirname "${VERSION_FILE}")"
+    cat > "${VERSION_FILE}" <<EOF
+{
+  "commit": "${latest_commit}",
+  "branch": "${BRANCH}",
+  "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
+    chmod 600 "${VERSION_FILE}"
     
     # Cleanup
     echo "  → Cleaning up..."
@@ -97,22 +172,42 @@ update_cipi() {
     
     echo ""
     echo -e "${GREEN}${BOLD}Cipi updated successfully!${NC}"
-    echo -e "New version: ${CYAN}${latest_version}${NC}"
+    echo -e "New commit: ${CYAN}${latest_commit:0:7}${NC}"
     echo ""
-    echo "Backup saved at: ${CIPI_DIR}.backup"
+    if [ -f /usr/local/bin/cipi.backup ]; then
+        echo "Backup saved at: /usr/local/bin/cipi.backup"
+    fi
+    if [ -d "${CIPI_LIB_DIR}.backup" ]; then
+        echo "Backup saved at: ${CIPI_LIB_DIR}.backup"
+    fi
     echo ""
 }
 
 # Check for updates (used by cron)
 check_updates() {
-    local current_version=$(get_current_version)
-    local latest_version=$(get_latest_version)
+    local current_commit=$(get_current_commit)
+    local latest_commit=$(get_latest_commit)
     
-    if version_gt "$latest_version" "$current_version"; then
-        echo "Update available: $current_version -> $latest_version"
+    if [ -z "$latest_commit" ] || [ "$latest_commit" = "null" ]; then
+        echo "Error: Could not fetch latest commit"
+        return 1
+    fi
+    
+    if [ -z "$current_commit" ] || [ "$current_commit" = "null" ]; then
+        echo "Update available: Unknown -> ${latest_commit:0:7}"
+        return 0
+    fi
+    
+    if [ "$current_commit" != "$latest_commit" ]; then
+        local commits_behind=$(count_commits_behind "$current_commit" "$latest_commit")
+        if [ "$commits_behind" != "unknown" ] && [ "$commits_behind" != "0" ]; then
+            echo "Update available: ${current_commit:0:7} -> ${latest_commit:0:7} (${commits_behind} commit(s) behind)"
+        else
+            echo "Update available: ${current_commit:0:7} -> ${latest_commit:0:7}"
+        fi
         return 0
     else
-        echo "Cipi is up to date ($current_version)"
+        echo "Cipi is up to date (${current_commit:0:7})"
         return 1
     fi
 }
