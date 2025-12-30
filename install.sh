@@ -82,12 +82,38 @@ check_root() {
     echo -e "${GREEN}✓ Running as root${NC}"
 }
 
+# Wait for apt locks to be released
+wait_for_apt() {
+    local max_wait=300  # Maximum wait time in seconds (5 minutes)
+    local wait_time=0
+    
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
+          fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
+          fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
+        if [ $wait_time -eq 0 ]; then
+            echo -e "${YELLOW}Waiting for other package managers to finish...${NC}"
+        fi
+        sleep 5
+        wait_time=$((wait_time + 5))
+        if [ $wait_time -ge $max_wait ]; then
+            echo -e "${RED}Error: Timeout waiting for apt locks after ${max_wait} seconds${NC}"
+            echo -e "${YELLOW}Try running: sudo killall unattended-upgr${NC}"
+            exit 1
+        fi
+    done
+    
+    if [ $wait_time -gt 0 ]; then
+        echo -e "${GREEN}✓ Package manager is now available${NC}"
+    fi
+}
+
 # Install basic packages
 install_basics() {
     clear
     echo -e "${GREEN}${BOLD}Installing Basic Packages...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get update
     apt-get install -y software-properties-common curl wget nano vim git \
         sed zip unzip openssl expect apt-transport-https \
@@ -173,6 +199,7 @@ install_nginx() {
     echo -e "${GREEN}${BOLD}Installing Nginx...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y nginx
     systemctl start nginx
     systemctl enable nginx
@@ -340,6 +367,7 @@ install_firewall() {
     echo -e "${GREEN}${BOLD}Installing Fail2ban & Firewall...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y fail2ban
     
     cat > /etc/fail2ban/jail.local <<'EOF'
@@ -374,6 +402,7 @@ install_php() {
     echo -e "${GREEN}${BOLD}Installing PHP 8.4...${NC}"
     sleep 1
     
+    wait_for_apt
     add-apt-repository -y ppa:ondrej/php
     apt-get update
     
@@ -424,6 +453,7 @@ install_mysql() {
     MYSQL_ROOT_PASSWORD=$(openssl rand -base64 24 | sha256sum | base64 | head -c 32)
     
     # Install MySQL
+    wait_for_apt
     apt-get install -y mysql-server
     
     # Secure MySQL installation
@@ -454,6 +484,7 @@ install_redis() {
     echo -e "${GREEN}${BOLD}Installing Redis...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y redis-server
     
     # Configure Redis
@@ -471,6 +502,7 @@ install_clamav() {
     echo -e "${GREEN}${BOLD}Installing ClamAV Antivirus...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y clamav clamav-daemon clamav-freshclam
     
     # Stop services to update
@@ -555,6 +587,7 @@ install_supervisor() {
     echo -e "${GREEN}${BOLD}Installing Supervisor...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y supervisor
     systemctl enable supervisor
     systemctl start supervisor
@@ -568,6 +601,7 @@ install_letsencrypt() {
     echo -e "${GREEN}${BOLD}Installing Let's Encrypt...${NC}"
     sleep 1
     
+    wait_for_apt
     apt-get install -y certbot python3-certbot-nginx
     
     echo -e "${GREEN}✓ Let's Encrypt installed${NC}"
@@ -580,6 +614,7 @@ install_nodejs() {
     sleep 1
     
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    wait_for_apt
     apt-get install -y nodejs
     
     echo -e "${GREEN}✓ Node.js installed${NC}"
