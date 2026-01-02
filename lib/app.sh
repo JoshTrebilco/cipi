@@ -157,7 +157,7 @@ app_create() {
     # Generate webhook secret
     echo "  → Generating webhook secret..."
     local webhook_secret=$(generate_webhook_secret)
-    store_webhook_secret "$username" "$webhook_secret"
+    set_webhook "$username" "$webhook_secret"
     
     # Setup log rotation
     echo "  → Setting up log rotation..."
@@ -600,7 +600,7 @@ app_delete() {
     
     # Delete webhook secret
     echo "  → Deleting webhook secret..."
-    delete_webhook_secret "$username"
+    delete_webhook "$username"
     
     # Remove from storage
     json_delete "${APPS_FILE}" "$username"

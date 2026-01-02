@@ -12,19 +12,6 @@ generate_webhook_secret() {
     openssl rand -hex 32
 }
 
-# Store webhook secret for an app (wrapper for storage function)
-store_webhook_secret() {
-    local username=$1
-    local secret=$2
-    set_webhook "$username" "$secret"
-}
-
-# Delete webhook secret for an app (wrapper for storage function)
-delete_webhook_secret() {
-    local username=$1
-    delete_webhook "$username"
-}
-
 # Regenerate webhook secret for an app
 webhook_regenerate_secret() {
     local username=$1
@@ -49,7 +36,7 @@ webhook_regenerate_secret() {
     echo -e "${CYAN}Regenerating webhook secret...${NC}"
     
     local new_secret=$(generate_webhook_secret)
-    store_webhook_secret "$username" "$new_secret"
+    set_webhook "$username" "$new_secret"
     echo ""
     echo -e "${GREEN}${BOLD}Webhook secret regenerated!${NC}"
     echo "─────────────────────────────────────"
