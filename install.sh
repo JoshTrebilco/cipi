@@ -651,7 +651,7 @@ install_cipi() {
     chown -R root:root /usr/local/bin/cipi /opt/cipi
     
     # Initialize storage
-    for file in virtualhosts.json domains.json databases.json; do
+    for file in apps.json domains.json databases.json; do
         if [ ! -f "/etc/cipi/$file" ]; then
             echo "{}" > "/etc/cipi/$file"
             chmod 600 "/etc/cipi/$file"
