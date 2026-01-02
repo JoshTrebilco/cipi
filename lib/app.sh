@@ -575,9 +575,9 @@ app_delete() {
     
     local php_version=$(get_app_field "$username" "php_version")
     
-    # Delete associated domains
-    echo "  → Deleting associated domains..."
-    delete_domains_by_app "$username"
+    # Delete associated domain
+    echo "  → Deleting associated domain..."
+    delete_domain_by_app "$username"
     
     # Delete Nginx configuration
     echo "  → Deleting Nginx configuration..."
@@ -611,22 +611,12 @@ app_delete() {
     echo ""
 }
 
-# Helper: Get domain by app
-get_domain_by_app() {
+# Helper: Delete domain by app
+delete_domain_by_app() {
     local username=$1
-    local domains=$(json_read "${DOMAINS_FILE}")
+    local domain=$(get_domain_by_app "$username")
     
-    echo "$domains" | jq -r "to_entries[] | select(.value.app == \"$username\") | .key" | head -n 1
-}
-
-# Helper: Delete domains by app
-delete_domains_by_app() {
-    local username=$1
-    local domains=$(json_read "${DOMAINS_FILE}")
-    
-    local domain_keys=$(echo "$domains" | jq -r "to_entries[] | select(.value.app == \"$username\") | .key")
-    
-    for domain in $domain_keys; do
+    if [ -n "$domain" ]; then
         # Get domain data to check for SSL
         local has_ssl=$(get_domain_field "$domain" "ssl")
         has_ssl=${has_ssl:-false}
@@ -637,7 +627,7 @@ delete_domains_by_app() {
         fi
         
         json_delete "${DOMAINS_FILE}" "$domain"
-    done
+    fi
 }
 
 # Helper: Setup Laravel

@@ -124,40 +124,6 @@ generate_password() {
     tr -dc 'A-Za-z0-9!@#$%^&*()_+{}|:<>?=' < /dev/urandom | head -c "$length"
 }
 
-# Check if domain exists
-domain_exists() {
-    local domain=$1
-    local domains=$(json_read "${DOMAINS_FILE}")
-    
-    # Check if it's a primary domain
-    if echo "$domains" | jq -e ".[\"$domain\"]" >/dev/null 2>&1; then
-        return 0
-    fi
-    
-    return 1
-}
-
-# Get where domain is used (returns "domain:appname")
-domain_get_owner() {
-    local search=$1
-    local domains=$(json_read "${DOMAINS_FILE}")
-    
-    # Check if it's a primary domain
-    local app=$(echo "$domains" | jq -r ".[\"$search\"].app // empty")
-    if [ -n "$app" ]; then
-        echo "domain:$search:$app"
-        return 0
-    fi
-    
-    return 1
-}
-
-# Get app by domain
-get_app_by_domain() {
-    local domain=$1
-    json_read "${DOMAINS_FILE}" | jq -r ".[\"$domain\"].app" 2>/dev/null
-}
-
 # Get config value
 get_config() {
     local key=$1
@@ -208,6 +174,19 @@ get_domain() {
     json_get "${DOMAINS_FILE}" "$domain"
 }
 
+# Check if domain exists
+domain_exists() {
+    local domain=$1
+    local domains=$(json_read "${DOMAINS_FILE}")
+    
+    # Check if it's a primary domain
+    if echo "$domains" | jq -e ".[\"$domain\"]" >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    return 1
+}
+
 # Get specific field from domain
 get_domain_field() {
     local domain=$1
@@ -216,6 +195,28 @@ get_domain_field() {
     if [ -n "$data" ] && [ "$data" != "null" ]; then
         echo "$data" | jq -r ".$field // empty"
     fi
+}
+
+# Get app by domain
+get_app_by_domain() {
+    local domain=$1
+    get_domain_field "$domain" "app"
+}
+
+# Get domain by app
+get_domain_by_app() {
+    local username=$1
+    local domains=$(json_keys "${DOMAINS_FILE}")
+    
+    for domain in $domains; do
+        local app=$(get_domain_field "$domain" "app")
+        if [ "$app" = "$username" ]; then
+            echo "$domain"
+            return 0
+        fi
+    done
+    
+    return 1
 }
 
 

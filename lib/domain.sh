@@ -118,6 +118,15 @@ domain_create() {
     # Check if app exists
     check_app_exists "$app"
     
+    # Check if app already has a domain
+    local existing_domain=$(get_domain_by_app "$app")
+    if [ -n "$existing_domain" ]; then
+        echo -e "${RED}Error: App '$app' already has a domain assigned${NC}"
+        echo -e "  Existing domain: ${CYAN}$existing_domain${NC}"
+        echo -e "  Delete the existing domain first: ${CYAN}cipi domain delete $existing_domain${NC}"
+        exit 1
+    fi
+    
     echo ""
     echo -e "${CYAN}Assigning domain...${NC}"
     
