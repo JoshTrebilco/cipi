@@ -680,6 +680,34 @@ install_webhook() {
     echo -e "${GREEN}${BOLD}Installing Webhook Endpoint...${NC}"
     sleep 1
     
+    # Prompt for webhook domain (required)
+    echo ""
+    echo -e "${CYAN}Webhook Domain Configuration${NC}"
+    echo "─────────────────────────────────────"
+    echo "A domain with SSL is required for webhook endpoints."
+    echo "Enter a domain name for the webhook endpoint (e.g., webhooks.yourdomain.com)"
+    echo ""
+    
+    while [ -z "$WEBHOOK_DOMAIN" ]; do
+        read -p "Webhook domain (required): " WEBHOOK_DOMAIN
+        if [ -z "$WEBHOOK_DOMAIN" ]; then
+            echo -e "${RED}Error: Domain is required for webhook endpoint${NC}"
+        fi
+    done
+    
+    # Prompt for SSL email
+    echo ""
+    read -p "SSL email for Let's Encrypt (optional): " WEBHOOK_SSL_EMAIL
+    
+    if [ -z "$WEBHOOK_SSL_EMAIL" ]; then
+        WEBHOOK_SSL_EMAIL="admin@${WEBHOOK_DOMAIN}"
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}Note: Make sure DNS is configured to point ${WEBHOOK_DOMAIN} to this server${NC}"
+    echo -e "${YELLOW}      before continuing. Press Enter when DNS is ready...${NC}"
+    read -p ""
+    
     # Create the PHP webhook handler
     cat > /opt/cipi/webhook.php <<'WEBHOOKPHP'
 <?php
@@ -926,26 +954,37 @@ WEBHOOKPHP
     echo 'www-data ALL=(ALL) NOPASSWD: /usr/bin/bash' > /etc/sudoers.d/cipi-webhook
     chmod 440 /etc/sudoers.d/cipi-webhook
     
-    # Update default Nginx site to include the webhook endpoint
-    cat > /etc/nginx/sites-available/default <<'EOF'
+    # Create webhook server block with SSL (required)
+    # Create HTTP server block (redirects to HTTPS)
+    cat > /etc/nginx/sites-available/webhook <<EOF
 server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    root /var/www/html;
-    index index.html index.php;
-    server_name _;
+    listen 80;
+    listen [::]:80;
+    server_name ${WEBHOOK_DOMAIN};
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name ${WEBHOOK_DOMAIN};
     server_tokens off;
     
-    client_max_body_size 100M;
+    ssl_certificate /etc/letsencrypt/live/${WEBHOOK_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${WEBHOOK_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
     
-    location / {
-        try_files $uri $uri/ =404;
-    }
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-XSS-Protection "1; mode=block";
+    add_header X-Content-Type-Options "nosniff";
+    
+    client_max_body_size 100M;
     
     # Cipi Webhook Endpoint
     location ~ ^/webhook/([a-zA-Z0-9_-]+)/?$ {
         # Only allow POST requests
-        if ($request_method != POST) {
+        if (\$request_method != POST) {
             return 405;
         }
         
@@ -955,20 +994,87 @@ server {
         # Pass to PHP-FPM
         fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_param SCRIPT_FILENAME /opt/cipi/webhook.php;
-        fastcgi_param REQUEST_URI $request_uri;
+        fastcgi_param REQUEST_URI \$request_uri;
         include fastcgi_params;
+    }
+    
+    # Deny all other requests
+    location / {
+        return 404;
     }
 }
 EOF
-    
-    # Test and reload nginx
-    if nginx -t 2>/dev/null; then
+        
+        # Remove old symlink if exists
+        rm -f /etc/nginx/sites-enabled/webhook
+        
+        # Enable the webhook site
+        ln -sf /etc/nginx/sites-available/webhook /etc/nginx/sites-enabled/webhook
+        
+        # Test nginx config before requesting certificate
+        if ! nginx -t 2>/dev/null; then
+            echo -e "${YELLOW}⚠ Nginx config test failed, fixing...${NC}"
+            nginx -t
+        fi
+        
+        # Reload nginx to make sure it's running with the new config
         systemctl reload nginx
-        echo -e "${GREEN}✓ Webhook endpoint installed${NC}"
+        
+        # Request SSL certificate
+        echo ""
+        echo -e "${CYAN}Requesting SSL certificate for ${WEBHOOK_DOMAIN}...${NC}"
+        CERTBOT_OUTPUT=$(certbot certonly --nginx -d "$WEBHOOK_DOMAIN" --non-interactive --agree-tos --email "$WEBHOOK_SSL_EMAIL" 2>&1)
+        CERTBOT_EXIT=$?
+        
+        # Filter out verbose output but show important messages
+        echo "$CERTBOT_OUTPUT" | grep -v "^Saving debug log" | grep -v "^$" || true
+        
+        if [ $CERTBOT_EXIT -eq 0 ]; then
+            if [ -d "/etc/letsencrypt/live/${WEBHOOK_DOMAIN}" ]; then
+                echo -e "${GREEN}✓ SSL certificate obtained${NC}"
+                
+                # Reload nginx to use SSL
+                systemctl reload nginx
+                echo -e "${GREEN}✓ Webhook endpoint installed with SSL${NC}"
+            else
+                echo -e "${RED}Error: SSL certificate directory not found${NC}"
+                echo -e "${YELLOW}Certificate may not have been created properly.${NC}"
+                echo -e "${YELLOW}Please check DNS configuration and try:${NC}"
+                echo -e "  ${CYAN}certbot certonly --nginx -d ${WEBHOOK_DOMAIN}${NC}"
+                exit 1
+            fi
+        else
+            echo -e "${RED}Error: SSL certificate request failed${NC}"
+            echo -e "${YELLOW}SSL is required for webhook endpoints.${NC}"
+            echo -e "${YELLOW}Please ensure:${NC}"
+            echo -e "  1. DNS is configured to point ${WEBHOOK_DOMAIN} to this server"
+            echo -e "  2. Port 80 is accessible from the internet"
+            echo -e "  3. The domain is not already using Let's Encrypt"
+            echo ""
+            echo -e "${YELLOW}After fixing DNS, run:${NC}"
+            echo -e "  ${CYAN}certbot certonly --nginx -d ${WEBHOOK_DOMAIN}${NC}"
+            exit 1
+        fi
+    
+    # Store webhook domain in config
+    if [ -f "/etc/cipi/config.json" ]; then
+        local tmp=$(mktemp)
+        jq --arg domain "$WEBHOOK_DOMAIN" '.webhook_domain = $domain' /etc/cipi/config.json > "$tmp"
+        mv "$tmp" /etc/cipi/config.json
+        chmod 600 /etc/cipi/config.json
     else
-        echo -e "${YELLOW}⚠ Nginx config test failed, webhook may not work${NC}"
-        nginx -t
+        echo "{\"webhook_domain\": \"${WEBHOOK_DOMAIN}\"}" > /etc/cipi/config.json
+        chmod 600 /etc/cipi/config.json
     fi
+    
+    # Final summary with webhook URL
+    echo ""
+    echo -e "${CYAN}${BOLD}Webhook Configuration Summary:${NC}"
+    echo "─────────────────────────────────────"
+    echo -e "${GREEN}✓ Domain: ${WEBHOOK_DOMAIN}${NC}"
+    echo -e "${GREEN}✓ SSL: Enabled${NC}"
+    echo -e "${CYAN}Webhook URL: https://${WEBHOOK_DOMAIN}/webhook/<username>${NC}"
+    echo ""
 }
 
 # Setup cron jobs
