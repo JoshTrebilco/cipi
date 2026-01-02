@@ -82,48 +82,6 @@ json_has_key() {
     jq -e ".[\"$key\"]" "$file" >/dev/null 2>&1
 }
 
-# Check if app exists, exit with error if not
-check_app_exists() {
-    local username=$1
-    if ! json_has_key "${APPS_FILE}" "$username"; then
-        echo -e "${RED}Error: App '$username' not found${NC}"
-        exit 1
-    fi
-}
-
-# Generate unique username
-generate_username() {
-    while true; do
-        username="u$(shuf -i 100000-999999 -n 1)"
-        if ! json_has_key "${APPS_FILE}" "$username"; then
-            echo "$username"
-            break
-        fi
-    done
-}
-
-# Generate database name
-generate_dbname() {
-    while true; do
-        dbname="db$(shuf -i 100000-999999 -n 1)"
-        if ! json_has_key "${DATABASES_FILE}" "$dbname"; then
-            echo "$dbname"
-            break
-        fi
-    done
-}
-
-# Generate database username
-generate_db_username() {
-    echo "db$(shuf -i 100000-999999 -n 1)"
-}
-
-# Generate secure password
-generate_password() {
-    local length=${1:-24}
-    tr -dc 'A-Za-z0-9!@#$%^&*()_+{}|:<>?=' < /dev/urandom | head -c "$length"
-}
-
 # Get config value
 get_config() {
     local key=$1
@@ -145,6 +103,27 @@ set_config() {
 }
 
 #############################################
+# Provision Helpers
+#############################################
+
+# Generate unique username
+generate_username() {
+    while true; do
+        username="u$(shuf -i 100000-999999 -n 1)"
+        if ! json_has_key "${APPS_FILE}" "$username"; then
+            echo "$username"
+            break
+        fi
+    done
+}
+
+# Generate secure password
+generate_password() {
+    local length=${1:-24}
+    tr -dc 'A-Za-z0-9!@#$%^&*()_+{}|:<>?=' < /dev/urandom | head -c "$length"
+}
+
+#############################################
 # App Helpers
 #############################################
 
@@ -161,6 +140,15 @@ get_app_field() {
     local app=$(get_app "$username")
     if [ -n "$app" ] && [ "$app" != "null" ]; then
         echo "$app" | jq -r ".$field // empty"
+    fi
+}
+
+# Check if app exists, exit with error if not
+check_app_exists() {
+    local username=$1
+    if ! json_has_key "${APPS_FILE}" "$username"; then
+        echo -e "${RED}Error: App '$username' not found${NC}"
+        exit 1
     fi
 }
 
@@ -219,7 +207,6 @@ get_domain_by_app() {
     return 1
 }
 
-
 #############################################
 # Database Helpers
 #############################################
@@ -238,6 +225,22 @@ get_db_field() {
     if [ -n "$data" ] && [ "$data" != "null" ]; then
         echo "$data" | jq -r ".$field // empty"
     fi
+}
+
+# Generate database name
+generate_dbname() {
+    while true; do
+        dbname="db$(shuf -i 100000-999999 -n 1)"
+        if ! json_has_key "${DATABASES_FILE}" "$dbname"; then
+            echo "$dbname"
+            break
+        fi
+    done
+}
+
+# Generate database username
+generate_db_username() {
+    echo "db$(shuf -i 100000-999999 -n 1)"
 }
 
 #############################################
