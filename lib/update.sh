@@ -14,11 +14,6 @@ get_latest_commit() {
     curl -s "${GITHUB_API}/branches/${BRANCH}" | jq -r '.commit.sha' 2>/dev/null
 }
 
-# Get current commit from version file
-get_current_commit() {
-    get_version_commit
-}
-
 # Count commits behind latest
 count_commits_behind() {
     local current_commit=$1
@@ -53,7 +48,6 @@ update_cipi() {
     echo "─────────────────────────────────────"
     echo ""
     
-    local current_commit=$(get_current_commit)
     echo -e "${CYAN}Checking for updates...${NC}"
     local latest_commit=$(get_latest_commit)
     
@@ -61,6 +55,8 @@ update_cipi() {
         echo -e "${RED}Error: Could not fetch latest commit${NC}"
         exit 1
     fi
+    
+    local current_commit=$(get_version_commit)
     
     # Display current status
     if [ -n "$current_commit" ] && [ "$current_commit" != "null" ]; then
@@ -175,7 +171,7 @@ update_cipi() {
 
 # Check for updates (used by cron)
 check_updates() {
-    local current_commit=$(get_current_commit)
+    local current_commit=$(get_version_commit)
     local latest_commit=$(get_latest_commit)
     
     if [ -z "$latest_commit" ] || [ "$latest_commit" = "null" ]; then
