@@ -143,6 +143,21 @@ get_app_field() {
     fi
 }
 
+# Set specific field in app
+set_app_field() {
+    local username=$1
+    local field=$2
+    local value=$3
+    local app=$(get_app "$username")
+    if [ -n "$app" ] && [ "$app" != "null" ]; then
+        local tmp=$(mktemp)
+        echo "$app" | jq ".$field = \"$value\"" > "$tmp"
+        local updated_app=$(cat "$tmp")
+        rm "$tmp"
+        json_set "${APPS_FILE}" "$username" "$updated_app"
+    fi
+}
+
 # Check if app exists, exit with error if not
 check_app_exists() {
     local username=$1

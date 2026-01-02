@@ -379,11 +379,7 @@ app_edit() {
         fi
         
         # Update storage
-        local tmp=$(mktemp)
-        echo "$vhost" | jq ".php_version = \"$new_php_version\"" > "$tmp"
-        local updated_vhost=$(cat "$tmp")
-        rm "$tmp"
-        json_set "${APPS_FILE}" "$username" "$updated_vhost"
+        set_app_field "$username" "php_version" "$new_php_version"
         
         # Reload services
         echo "  → Reloading services..."
