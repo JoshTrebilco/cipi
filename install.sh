@@ -674,6 +674,303 @@ EOF
     echo -e "${GREEN}✓ Cipi installed${NC}"
 }
 
+# Install Webhook Endpoint
+install_webhook() {
+    clear
+    echo -e "${GREEN}${BOLD}Installing Webhook Endpoint...${NC}"
+    sleep 1
+    
+    # Create the PHP webhook handler
+    cat > /opt/cipi/webhook.php <<'WEBHOOKPHP'
+<?php
+/**
+ * Cipi Centralized Webhook Handler
+ * 
+ * Receives GitHub webhooks, validates signatures using HMAC-SHA256,
+ * and triggers deployments for the specified app.
+ */
+
+// Configuration
+define('WEBHOOKS_FILE', '/etc/cipi/webhooks.json');
+define('APPS_FILE', '/etc/cipi/apps.json');
+define('LOG_FILE', '/var/log/cipi/webhook.log');
+
+// Ensure log directory exists
+if (!is_dir(dirname(LOG_FILE))) {
+    mkdir(dirname(LOG_FILE), 0755, true);
+}
+
+/**
+ * Log a message to the webhook log file
+ */
+function webhook_log($message, $level = 'INFO') {
+    $timestamp = date('Y-m-d H:i:s');
+    $log_entry = "[$timestamp] [$level] $message\n";
+    file_put_contents(LOG_FILE, $log_entry, FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * Send JSON response and exit
+ */
+function respond($status_code, $message, $details = []) {
+    http_response_code($status_code);
+    header('Content-Type: application/json');
+    echo json_encode(array_merge(['status' => $status_code >= 400 ? 'error' : 'success', 'message' => $message], $details));
+    exit;
+}
+
+/**
+ * Validate GitHub webhook signature using HMAC-SHA256
+ */
+function validate_github_signature($payload, $secret, $signature_header) {
+    if (empty($signature_header)) {
+        return false;
+    }
+    
+    // GitHub sends signature as "sha256=<hash>"
+    if (strpos($signature_header, 'sha256=') !== 0) {
+        return false;
+    }
+    
+    $expected_signature = 'sha256=' . hash_hmac('sha256', $payload, $secret);
+    
+    // Use timing-safe comparison to prevent timing attacks
+    return hash_equals($expected_signature, $signature_header);
+}
+
+/**
+ * Get the username from the request URI
+ */
+function get_username_from_uri() {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    
+    // Remove query string if present
+    $uri = strtok($uri, '?');
+    
+    // Match /webhook/<username>
+    if (preg_match('#^/webhook/([a-zA-Z0-9_-]+)/?$#', $uri, $matches)) {
+        return $matches[1];
+    }
+    
+    return null;
+}
+
+/**
+ * Check if app exists
+ */
+function app_exists($username) {
+    if (!file_exists(APPS_FILE)) {
+        return false;
+    }
+    
+    $apps = json_decode(file_get_contents(APPS_FILE), true);
+    return isset($apps[$username]);
+}
+
+/**
+ * Get webhook secret for an app
+ */
+function get_webhook_secret($username) {
+    if (!file_exists(WEBHOOKS_FILE)) {
+        return null;
+    }
+    
+    $webhooks = json_decode(file_get_contents(WEBHOOKS_FILE), true);
+    return $webhooks[$username]['secret'] ?? null;
+}
+
+/**
+ * Trigger deployment for an app
+ */
+function trigger_deployment($username) {
+    $home_dir = "/home/$username";
+    $deploy_script = "$home_dir/deploy.sh";
+    
+    if (!file_exists($deploy_script)) {
+        webhook_log("Deploy script not found: $deploy_script", 'ERROR');
+        return ['success' => false, 'error' => 'Deploy script not found'];
+    }
+    
+    // Run deployment as the app user
+    // Use sudo to switch to the app user and run the deploy script
+    $command = sprintf(
+        'sudo -u %s bash -c "cd %s && ./deploy.sh" 2>&1',
+        escapeshellarg($username),
+        escapeshellarg($home_dir)
+    );
+    
+    $output = [];
+    $return_code = 0;
+    exec($command, $output, $return_code);
+    
+    $output_str = implode("\n", $output);
+    
+    if ($return_code === 0) {
+        webhook_log("Deployment successful for $username", 'INFO');
+        return ['success' => true, 'output' => $output_str];
+    } else {
+        webhook_log("Deployment failed for $username: $output_str", 'ERROR');
+        return ['success' => false, 'error' => 'Deployment failed', 'output' => $output_str];
+    }
+}
+
+// ============================================
+// Main Request Handler
+// ============================================
+
+// Only accept POST requests
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    webhook_log("Invalid request method: " . $_SERVER['REQUEST_METHOD'], 'WARN');
+    respond(405, 'Method not allowed. Use POST.');
+}
+
+// Validate Content-Type header
+$content_type = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+if (stripos($content_type, 'application/json') === false) {
+    webhook_log("Invalid Content-Type: $content_type", 'WARN');
+    respond(400, 'Content-Type must be application/json');
+}
+
+// Get username from URL
+$username = get_username_from_uri();
+if (!$username) {
+    webhook_log("Invalid webhook URL: " . ($_SERVER['REQUEST_URI'] ?? 'unknown'), 'WARN');
+    respond(400, 'Invalid webhook URL. Expected /webhook/<username>');
+}
+
+webhook_log("Webhook received for: $username");
+
+// Check if app exists
+if (!app_exists($username)) {
+    webhook_log("App not found: $username", 'WARN');
+    respond(404, 'App not found');
+}
+
+// Get webhook secret
+$secret = get_webhook_secret($username);
+if (!$secret) {
+    webhook_log("No webhook secret configured for: $username", 'WARN');
+    respond(401, 'Webhook not configured for this app');
+}
+
+// Get request payload
+$payload = file_get_contents('php://input');
+if (empty($payload)) {
+    webhook_log("Empty payload received for: $username", 'WARN');
+    respond(400, 'Empty payload');
+}
+
+// Check payload size limit (10MB)
+if (strlen($payload) > 10485760) {
+    webhook_log("Payload too large for: $username (size: " . strlen($payload) . ")", 'WARN');
+    respond(413, 'Payload too large. Maximum size is 10MB.');
+}
+
+// Get GitHub signature header
+$signature = $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '';
+
+// Validate signature
+if (!validate_github_signature($payload, $secret, $signature)) {
+    webhook_log("Invalid signature for: $username", 'WARN');
+    respond(401, 'Invalid signature');
+}
+
+webhook_log("Signature validated for: $username");
+
+// Parse payload to get event details
+$data = json_decode($payload, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    webhook_log("Invalid JSON payload for: $username - " . json_last_error_msg(), 'WARN');
+    respond(400, 'Invalid JSON payload: ' . json_last_error_msg());
+}
+
+$ref = $data['ref'] ?? 'unknown';
+$pusher = $data['pusher']['name'] ?? 'unknown';
+$repo = $data['repository']['full_name'] ?? 'unknown';
+
+webhook_log("Push event: $repo ($ref) by $pusher");
+
+// Trigger deployment
+$result = trigger_deployment($username);
+
+if ($result['success']) {
+    respond(200, 'Deployment triggered successfully', [
+        'app' => $username,
+        'ref' => $ref,
+        'repository' => $repo
+    ]);
+} else {
+    respond(500, 'Deployment failed', [
+        'app' => $username,
+        'error' => $result['error'] ?? 'Unknown error'
+    ]);
+}
+WEBHOOKPHP
+    
+    # Set permissions - readable by www-data for nginx/php-fpm
+    chmod 644 /opt/cipi/webhook.php
+    chown root:root /opt/cipi/webhook.php
+    
+    # Initialize webhooks storage
+    if [ ! -f "/etc/cipi/webhooks.json" ]; then
+        echo "{}" > /etc/cipi/webhooks.json
+        chmod 600 /etc/cipi/webhooks.json
+        chown root:root /etc/cipi/webhooks.json
+    fi
+    
+    # Create webhook log directory
+    mkdir -p /var/log/cipi
+    chmod 755 /var/log/cipi
+    
+    # Allow www-data to run bash as any user (needed for deploy.sh execution)
+    echo 'www-data ALL=(ALL) NOPASSWD: /usr/bin/bash' > /etc/sudoers.d/cipi-webhook
+    chmod 440 /etc/sudoers.d/cipi-webhook
+    
+    # Update default Nginx site to include the webhook endpoint
+    cat > /etc/nginx/sites-available/default <<'EOF'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    index index.html index.php;
+    server_name _;
+    server_tokens off;
+    
+    client_max_body_size 100M;
+    
+    location / {
+        try_files $uri $uri/ =404;
+    }
+    
+    # Cipi Webhook Endpoint
+    location ~ ^/webhook/([a-zA-Z0-9_-]+)/?$ {
+        # Only allow POST requests
+        if ($request_method != POST) {
+            return 405;
+        }
+        
+        # Rate limiting
+        limit_req zone=one burst=10 nodelay;
+        
+        # Pass to PHP-FPM
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME /opt/cipi/webhook.php;
+        fastcgi_param REQUEST_URI $request_uri;
+        include fastcgi_params;
+    }
+}
+EOF
+    
+    # Test and reload nginx
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx
+        echo -e "${GREEN}✓ Webhook endpoint installed${NC}"
+    else
+        echo -e "${YELLOW}⚠ Nginx config test failed, webhook may not work${NC}"
+        nginx -t
+    fi
+}
+
 # Setup cron jobs
 setup_cron() {
     clear
@@ -778,6 +1075,7 @@ main() {
     install_letsencrypt
     install_nodejs
     install_cipi
+    install_webhook
     setup_cron
     final_steps
 }
