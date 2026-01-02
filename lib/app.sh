@@ -228,8 +228,13 @@ EOF
     echo -e "Key also available at: ${CYAN}$home_dir/gitkey.pub${NC}"
     echo ""
     echo -e "${CYAN}${BOLD}GitHub Webhook (Auto-Deploy):${NC}"
-    local server_ip=$(get_server_ip)
-    echo -e "URL:           ${CYAN}http://$server_ip/webhook/$username${NC}"
+    local webhook_domain=$(get_webhook_domain)
+    if [ -n "$webhook_domain" ]; then
+        echo -e "URL:           ${CYAN}https://$webhook_domain/webhook/$username${NC}"
+    else
+        echo -e "${YELLOW}Warning: Webhook domain not configured${NC}"
+        echo -e "URL:           ${CYAN}(webhook domain required)${NC}"
+    fi
     echo -e "Content type:  ${CYAN}application/json${NC}"
     echo -e "Secret:        ${CYAN}$webhook_secret${NC}"
     echo -e "Events:        ${CYAN}Just the push event${NC}"

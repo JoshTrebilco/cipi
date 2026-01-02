@@ -11,6 +11,13 @@ get_server_ip() {
     curl -s https://checkip.amazonaws.com || echo "Unknown"
 }
 
+# Get webhook domain
+get_webhook_domain() {
+    if [ -f "/etc/cipi/config.json" ]; then
+        jq -r '.webhook_domain // empty' /etc/cipi/config.json
+    fi
+}
+
 # Get hostname
 get_hostname() {
     hostname

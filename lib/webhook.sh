@@ -91,7 +91,7 @@ webhook_regenerate_secret() {
 # Show webhook information for an app
 webhook_show() {
     local username=$1
-    local server_ip=$(get_server_ip)
+    local webhook_domain=$(get_webhook_domain)
     local secret=$(get_webhook_secret "$username")
     
     if [ -z "$secret" ]; then
@@ -103,7 +103,12 @@ webhook_show() {
     echo ""
     echo -e "${BOLD}GitHub Webhook Configuration:${NC}"
     echo "─────────────────────────────────────"
-    echo -e "Payload URL:   ${CYAN}http://$server_ip/webhook/$username${NC}"
+    if [ -n "$webhook_domain" ]; then
+        echo -e "Payload URL:   ${CYAN}https://$webhook_domain/webhook/$username${NC}"
+    else
+        echo -e "${YELLOW}Warning: Webhook domain not configured${NC}"
+        echo -e "Payload URL:   ${CYAN}(webhook domain required)${NC}"
+    fi
     echo -e "Content type:  ${CYAN}application/json${NC}"
     echo -e "Secret:        ${CYAN}$secret${NC}"
     echo -e "Events:        ${CYAN}Just the push event${NC}"

@@ -234,7 +234,7 @@ create_webhook_docs() {
     local username=$1
     local home_dir="/home/$username"
     local webhook_doc="$home_dir/WEBHOOK_SETUP.md"
-    local server_ip=$(get_server_ip)
+    local webhook_domain=$(get_webhook_domain)
     
     cat > "$webhook_doc" <<'WEBHOOKEOF'
 # Webhook Setup Guide
@@ -249,7 +249,7 @@ Cipi provides a secure, centralized webhook system for automatic deployments.
 
    **Payload URL:** 
    ```
-   http://SERVER_IP_PLACEHOLDER/webhook/USERNAME_PLACEHOLDER
+   https://WEBHOOK_DOMAIN_PLACEHOLDER/webhook/USERNAME_PLACEHOLDER
    ```
    
    **Content type:** `application/json`
@@ -302,6 +302,7 @@ cipi webhook logs
 
 ## Security Features
 
+- **HTTPS/SSL encryption** - Secure webhook delivery
 - **HMAC-SHA256 signature validation** - GitHub's recommended method
 - **Secrets stored securely** - Root-only accessible files
 - **Rate limiting** - Prevents abuse
@@ -319,7 +320,11 @@ If webhooks are not working:
 WEBHOOKEOF
     
     # Replace placeholders
-    sed -i "s/SERVER_IP_PLACEHOLDER/$server_ip/g" "$webhook_doc"
+    if [ -n "$webhook_domain" ]; then
+        sed -i "s/WEBHOOK_DOMAIN_PLACEHOLDER/$webhook_domain/g" "$webhook_doc"
+    else
+        sed -i "s/WEBHOOK_DOMAIN_PLACEHOLDER/(webhook domain not configured)/g" "$webhook_doc"
+    fi
     sed -i "s/USERNAME_PLACEHOLDER/$username/g" "$webhook_doc"
     
     # Set ownership
