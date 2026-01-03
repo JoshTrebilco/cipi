@@ -5,7 +5,7 @@
 #############################################
 
 # Helper: Convert HTTPS Git URL to SSH format
-convert_https_to_ssh_url() {
+git_url_to_ssh() {
     local url=$1
     
     # If already SSH format, return as-is
@@ -31,7 +31,7 @@ convert_https_to_ssh_url() {
 }
 
 # Helper: Configure Git to use SSH (SSH config + remote URL conversion)
-configure_git_for_ssh() {
+git_configure_ssh() {
     local username=$1
     local home_dir=$2
     local wwwroot="$home_dir/wwwroot"
@@ -84,7 +84,7 @@ SSHCONFIG
     
     # Convert HTTPS to SSH
     if [[ "$current_url" =~ ^https:// ]]; then
-        local ssh_url=$(convert_https_to_ssh_url "$current_url")
+        local ssh_url=$(git_url_to_ssh "$current_url")
         echo "  → Converting Git remote from HTTPS to SSH..."
         sudo -u "$username" git -C "$wwwroot" remote set-url origin "$ssh_url" 2>/dev/null
         
@@ -98,7 +98,7 @@ SSHCONFIG
 
 # Helper: Parse GitHub owner/repo from a git URL
 # Returns owner/repo if GitHub URL, empty if not
-parse_github_owner_repo() {
+github_parse_repo() {
     local repository=$1
     
     if [[ "$repository" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)?$ ]]; then
@@ -108,9 +108,9 @@ parse_github_owner_repo() {
 
 # Helper: Check if a GitHub repo is private
 # Returns: "private", "public", or "unknown" (if not GitHub or API error)
-check_github_repo_is_private() {
+github_is_repo_private() {
     local repository=$1
-    local owner_repo=$(parse_github_owner_repo "$repository")
+    local owner_repo=$(github_parse_repo "$repository")
     
     # Not a GitHub URL
     if [ -z "$owner_repo" ]; then
@@ -141,14 +141,111 @@ check_github_repo_is_private() {
     fi
 }
 
+# Helper: GitHub Device Flow OAuth - prompts user to authorize and returns access token
+# Usage: local token=$(github_device_flow_auth "scope")
+# Returns: access token on success, empty on failure
+# Note: Caller should check if result is empty and handle accordingly
+github_device_flow_auth() {
+    local scope=$1
+    
+    # Get GitHub Client ID from config
+    local github_client_id=$(get_config "github_client_id")
+    
+    if [ -z "$github_client_id" ]; then
+        echo ""
+        return 1
+    fi
+    
+    # Step 1: Request device code
+    local device_response=$(curl -s -X POST \
+        "https://github.com/login/device/code" \
+        -H "Accept: application/json" \
+        -d "client_id=$github_client_id&scope=$scope")
+    
+    local device_code=$(echo "$device_response" | jq -r '.device_code // empty')
+    local user_code=$(echo "$device_response" | jq -r '.user_code // empty')
+    local verification_uri=$(echo "$device_response" | jq -r '.verification_uri // empty')
+    local interval=$(echo "$device_response" | jq -r '.interval // 5')
+    local expires_in=$(echo "$device_response" | jq -r '.expires_in // 900')
+    
+    if [ -z "$device_code" ] || [ "$device_code" = "null" ]; then
+        echo "" >&2
+        return 1
+    fi
+    
+    # Step 2: Prompt user to authorize (output to stderr so it doesn't interfere with token return)
+    echo "" >&2
+    echo "─────────────────────────────────────" >&2
+    echo -e "${YELLOW}${BOLD}GitHub Authorization Required${NC}" >&2
+    echo "" >&2
+    echo -e "  1. Open: ${CYAN}${BOLD}$verification_uri${NC}" >&2
+    echo -e "  2. Enter code: ${GREEN}${BOLD}$user_code${NC}" >&2
+    echo "" >&2
+    echo "Waiting for authorization..." >&2
+    echo "─────────────────────────────────────" >&2
+    
+    # Step 3: Poll for authorization
+    local access_token=""
+    local elapsed=0
+    local poll_count=0
+    
+    while [ $elapsed -lt $expires_in ]; do
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+        poll_count=$((poll_count + 1))
+        
+        # Show progress every 5 polls
+        if [ $((poll_count % 5)) -eq 0 ]; then
+            printf "." >&2
+        fi
+        
+        local token_response=$(curl -s -X POST \
+            "https://github.com/login/oauth/access_token" \
+            -H "Accept: application/json" \
+            -d "client_id=$github_client_id&device_code=$device_code&grant_type=urn:ietf:params:oauth:grant-type:device_code")
+        
+        local error=$(echo "$token_response" | jq -r '.error // empty')
+        
+        if [ "$error" = "authorization_pending" ]; then
+            continue
+        elif [ "$error" = "slow_down" ]; then
+            interval=$((interval + 5))
+            continue
+        elif [ -n "$error" ] && [ "$error" != "null" ]; then
+            echo "" >&2
+            echo -e "${RED}Error: Authorization failed - $error${NC}" >&2
+            echo ""
+            return 1
+        fi
+        
+        access_token=$(echo "$token_response" | jq -r '.access_token // empty')
+        if [ -n "$access_token" ] && [ "$access_token" != "null" ]; then
+            break
+        fi
+    done
+    
+    if [ -z "$access_token" ] || [ "$access_token" = "null" ]; then
+        echo "" >&2
+        echo -e "${RED}Error: Authorization timed out${NC}" >&2
+        echo ""
+        return 1
+    fi
+    
+    echo "" >&2
+    echo -e "${GREEN}✓ Authorized!${NC}" >&2
+    
+    # Return the token (to stdout)
+    echo "$access_token"
+}
+
 # Helper: Add deploy key to GitHub repo using Device Flow OAuth
 # This prompts the user to authorize via browser, then adds the key
-add_github_deploy_key() {
+github_add_deploy_key() {
     local repository=$1
     local key_title=$2
     local public_key=$3
     
-    local owner_repo=$(parse_github_owner_repo "$repository")
+    local owner_repo=$(github_parse_repo "$repository")
     
     if [ -z "$owner_repo" ]; then
         echo -e "  ${YELLOW}⚠ Not a GitHub repository, skipping deploy key setup${NC}"
@@ -167,84 +264,15 @@ add_github_deploy_key() {
     echo ""
     echo -e "  ${CYAN}Private repository detected - adding deploy key via GitHub API...${NC}"
     
-    # Step 1: Request device code (need write:public_key scope for deploy keys)
-    local device_response=$(curl -s -X POST \
-        "https://github.com/login/device/code" \
-        -H "Accept: application/json" \
-        -d "client_id=$github_client_id&scope=repo")
+    # Get access token via Device Flow OAuth
+    local access_token=$(github_device_flow_auth "repo")
     
-    local device_code=$(echo "$device_response" | jq -r '.device_code // empty')
-    local user_code=$(echo "$device_response" | jq -r '.user_code // empty')
-    local verification_uri=$(echo "$device_response" | jq -r '.verification_uri // empty')
-    local interval=$(echo "$device_response" | jq -r '.interval // 5')
-    local expires_in=$(echo "$device_response" | jq -r '.expires_in // 900')
-    
-    if [ -z "$device_code" ] || [ "$device_code" = "null" ]; then
-        local error=$(echo "$device_response" | jq -r '.error // "Unknown error"')
-        echo -e "  ${RED}Error: Failed to initiate GitHub authorization${NC}"
+    if [ -z "$access_token" ]; then
+        echo -e "  ${RED}Error: Failed to authenticate with GitHub${NC}"
         return 1
     fi
     
-    # Step 2: Prompt user to authorize
-    echo ""
-    echo "  ─────────────────────────────────────"
-    echo -e "  ${YELLOW}${BOLD}GitHub Authorization Required${NC}"
-    echo ""
-    echo -e "    1. Open: ${CYAN}${BOLD}$verification_uri${NC}"
-    echo -e "    2. Enter code: ${GREEN}${BOLD}$user_code${NC}"
-    echo ""
-    echo "  Waiting for authorization..."
-    echo "  ─────────────────────────────────────"
-    
-    # Step 3: Poll for authorization
-    local access_token=""
-    local elapsed=0
-    local poll_count=0
-    
-    while [ $elapsed -lt $expires_in ]; do
-        sleep "$interval"
-        elapsed=$((elapsed + interval))
-        poll_count=$((poll_count + 1))
-        
-        # Show progress every 5 polls
-        if [ $((poll_count % 5)) -eq 0 ]; then
-            printf "  ."
-        fi
-        
-        local token_response=$(curl -s -X POST \
-            "https://github.com/login/oauth/access_token" \
-            -H "Accept: application/json" \
-            -d "client_id=$github_client_id&device_code=$device_code&grant_type=urn:ietf:params:oauth:grant-type:device_code")
-        
-        local error=$(echo "$token_response" | jq -r '.error // empty')
-        
-        if [ "$error" = "authorization_pending" ]; then
-            continue
-        elif [ "$error" = "slow_down" ]; then
-            interval=$((interval + 5))
-            continue
-        elif [ -n "$error" ] && [ "$error" != "null" ]; then
-            echo ""
-            echo -e "  ${RED}Error: Authorization failed - $error${NC}"
-            return 1
-        fi
-        
-        access_token=$(echo "$token_response" | jq -r '.access_token // empty')
-        if [ -n "$access_token" ] && [ "$access_token" != "null" ]; then
-            break
-        fi
-    done
-    
-    if [ -z "$access_token" ] || [ "$access_token" = "null" ]; then
-        echo ""
-        echo -e "  ${RED}Error: Authorization timed out${NC}"
-        return 1
-    fi
-    
-    echo ""
-    echo -e "  ${GREEN}✓ Authorized!${NC}"
-    
-    # Step 4: Add deploy key
+    # Add deploy key
     echo -e "  ${CYAN}Adding deploy key to $owner_repo...${NC}"
     
     local key_response=$(curl -s -X POST \
@@ -279,4 +307,111 @@ add_github_deploy_key() {
     return 0
 }
 
+# Helper: Create GitHub webhook using an access token
+# Usage: github_create_webhook "owner/repo" "access_token" "webhook_url" "webhook_secret"
+# Returns: 0 on success, 1 on failure
+github_create_webhook() {
+    local owner_repo=$1
+    local access_token=$2
+    local webhook_url=$3
+    local webhook_secret=$4
+    
+    if [ -z "$owner_repo" ] || [ -z "$access_token" ] || [ -z "$webhook_url" ] || [ -z "$webhook_secret" ]; then
+        echo -e "${RED}Error: Missing required parameters for webhook creation${NC}"
+        return 1
+    fi
+    
+    echo -e "${CYAN}Creating webhook on GitHub...${NC}"
+    
+    local webhook_response=$(curl -s -X POST \
+        "https://api.github.com/repos/$owner_repo/hooks" \
+        -H "Authorization: Bearer $access_token" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        -d "{
+            \"name\": \"web\",
+            \"active\": true,
+            \"events\": [\"push\"],
+            \"config\": {
+                \"url\": \"$webhook_url\",
+                \"content_type\": \"application/json\",
+                \"secret\": \"$webhook_secret\",
+                \"insecure_ssl\": \"0\"
+            }
+        }")
+    
+    local webhook_id=$(echo "$webhook_response" | jq -r '.id // empty')
+    local error_msg=$(echo "$webhook_response" | jq -r '.message // empty')
+    
+    if [ -z "$webhook_id" ] || [ "$webhook_id" = "null" ]; then
+        # Check for common errors
+        if [[ "$error_msg" == *"Hook already exists"* ]]; then
+            echo -e "${GREEN}✓ Webhook already exists on repository${NC}"
+            return 0
+        fi
+        if [ -n "$error_msg" ] && [ "$error_msg" != "null" ]; then
+            echo -e "${RED}Error: Failed to create webhook: $error_msg${NC}"
+        else
+            echo -e "${RED}Error: Failed to create webhook${NC}"
+        fi
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${GREEN}${BOLD}✓ Webhook created successfully!${NC}"
+    echo "─────────────────────────────────────"
+    echo -e "Webhook ID: ${CYAN}$webhook_id${NC}"
+    echo -e "URL:        ${CYAN}$webhook_url${NC}"
+    echo ""
+    echo -e "${GREEN}Pushes to $owner_repo will now auto-deploy!${NC}"
+    return 0
+}
+
+# Helper: Setup GitHub webhook for an app (full flow: auth + create)
+# This is a convenience function that handles the complete webhook setup
+# Usage: github_setup_webhook "repository_url" "webhook_url" "webhook_secret"
+# Returns: 0 on success, 1 on failure
+github_setup_webhook() {
+    local repository=$1
+    local webhook_url=$2
+    local webhook_secret=$3
+    
+    local owner_repo=$(github_parse_repo "$repository")
+    
+    if [ -z "$owner_repo" ]; then
+        echo -e "${RED}Error: Could not parse GitHub repository from: $repository${NC}"
+        echo "Repository must be a GitHub URL (e.g., https://github.com/owner/repo or git@github.com:owner/repo.git)"
+        return 1
+    fi
+    
+    # Check if GitHub OAuth is configured
+    local github_client_id=$(get_config "github_client_id")
+    
+    if [ -z "$github_client_id" ]; then
+        echo -e "${RED}Error: GitHub OAuth Client ID not configured${NC}"
+        echo "Run the installer again or set it manually:"
+        echo "  ${CYAN}cipi config set github_client_id <your_client_id>${NC}"
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Setting up GitHub webhook for ${BOLD}$owner_repo${NC}"
+    
+    # Get access token via Device Flow OAuth
+    local access_token=$(github_device_flow_auth "admin:repo_hook")
+    
+    if [ -z "$access_token" ]; then
+        echo -e "${RED}Error: Failed to authenticate with GitHub${NC}"
+        return 1
+    fi
+    
+    # Create the webhook
+    github_create_webhook "$owner_repo" "$access_token" "$webhook_url" "$webhook_secret"
+    local result=$?
+    
+    # Clear token
+    unset access_token
+    
+    return $result
+}
 

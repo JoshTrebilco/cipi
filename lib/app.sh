@@ -133,12 +133,12 @@ app_create() {
     
     # Check if GitHub private repo - if so, add deploy key before cloning
     echo "  → Checking repository access..."
-    local repo_visibility=$(check_github_repo_is_private "$repository")
+    local repo_visibility=$(github_is_repo_private "$repository")
     local deploy_key_failed=false
     
     if [ "$repo_visibility" = "private" ]; then
         local public_key=$(cat "$home_dir/gitkey.pub")
-        if ! add_github_deploy_key "$repository" "cipi-$username" "$public_key"; then
+        if ! github_add_deploy_key "$repository" "cipi-$username" "$public_key"; then
             deploy_key_failed=true
             echo -e "  ${YELLOW}⚠ Could not add deploy key automatically${NC}"
             echo -e "  ${YELLOW}  Please add this key as a deploy key to your repository:${NC}"
@@ -161,7 +161,7 @@ app_create() {
     fi
     
     # Configure Git to use SSH (SSH config + convert remote URL for webhook deployments)
-    configure_git_for_ssh "$username" "$home_dir"
+    git_configure_ssh "$username" "$home_dir"
     
     # Set web-accessible permissions (group-based access for nginx)
     echo "  → Setting web permissions..."
