@@ -259,6 +259,15 @@ app_create() {
     local webhook_secret=$(generate_webhook_secret)
     set_webhook "$username" "$webhook_secret"
     
+    # Setup GitHub webhook automatically if OAuth is configured
+    local github_client_id=$(get_config "github_client_id")
+    local webhook_setup_failed=false
+    if [ -n "$github_client_id" ]; then
+        echo "  → Setting up GitHub webhook..."
+        # Run in subshell to catch exit without stopping app creation
+        (webhook_setup "$username" 2>&1) || webhook_setup_failed=true
+    fi
+    
     # Setup log rotation
     echo "  → Setting up log rotation..."
     setup_log_rotation "$username"
@@ -330,22 +339,29 @@ EOF
     echo ""
     echo -e "Key also available at: ${CYAN}$home_dir/gitkey.pub${NC}"
     echo ""
-    echo -e "${CYAN}${BOLD}GitHub Webhook (Auto-Deploy):${NC}"
-    local webhook_domain=$(get_config "webhook_domain")
-    if [ -n "$webhook_domain" ]; then
-        echo -e "URL:           ${CYAN}https://$webhook_domain/webhook/$username${NC}"
-    else
-        echo -e "${YELLOW}Warning: Webhook domain not configured${NC}"
-        echo -e "URL:           ${CYAN}(webhook domain required)${NC}"
+    
+    # Show manual webhook instructions only if auto-setup failed or wasn't attempted
+    if [ "$webhook_setup_failed" = true ] || [ -z "$github_client_id" ]; then
+        echo -e "${CYAN}${BOLD}GitHub Webhook (Auto-Deploy):${NC}"
+        local webhook_domain=$(get_config "webhook_domain")
+        if [ -n "$webhook_domain" ]; then
+            echo -e "URL:           ${CYAN}https://$webhook_domain/webhook/$username${NC}"
+        else
+            echo -e "${YELLOW}Warning: Webhook domain not configured${NC}"
+            echo -e "URL:           ${CYAN}(webhook domain required)${NC}"
+        fi
+        echo -e "Content type:  ${CYAN}application/json${NC}"
+        echo -e "Secret:        ${CYAN}$webhook_secret${NC}"
+        echo -e "Events:        ${CYAN}Just the push event${NC}"
+        echo ""
+        if [ "$webhook_setup_failed" = true ]; then
+            echo -e "${YELLOW}Automatic webhook setup failed. Please configure manually:${NC}"
+        fi
+        echo -e "${CYAN}${BOLD}Next Steps:${NC}"
+        echo -e "1. Configure GitHub webhook with the above settings"
+        echo -e "2. Assign domain: ${CYAN}cipi domain create${NC}"
+        echo ""
     fi
-    echo -e "Content type:  ${CYAN}application/json${NC}"
-    echo -e "Secret:        ${CYAN}$webhook_secret${NC}"
-    echo -e "Events:        ${CYAN}Just the push event${NC}"
-    echo ""
-    echo -e "${CYAN}${BOLD}Next Steps:${NC}"
-    echo -e "1. Configure GitHub webhook with the above settings"
-    echo -e "2. Assign domain: ${CYAN}cipi domain create${NC}"
-    echo ""
 }
 
 # List apps

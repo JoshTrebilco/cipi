@@ -727,6 +727,28 @@ install_webhook() {
         fi
     done
     
+    # GitHub OAuth App setup tutorial
+    echo ""
+    echo -e "${CYAN}GitHub OAuth App Setup (Optional)${NC}"
+    echo "─────────────────────────────────────"
+    echo "To enable automatic webhook creation, you need a GitHub OAuth App."
+    echo ""
+    echo "1. Go to: https://github.com/settings/applications/new"
+    echo "2. Fill in:"
+    echo "   - Application name: Cipi Server Manager (or whatever you want)"
+    echo "   - Homepage URL: Your project url"
+    echo "   - Authorization callback URL: http://localhost (not used for device flow, but required)"
+    echo "3. Check 'Enable Device Flow'"
+    echo "4. Click 'Register application'"
+    echo "5. Copy the 'Client ID' (NOT the secret)"
+    echo ""
+    read -p "GitHub OAuth Client ID (or press Enter to skip): " GITHUB_CLIENT_ID
+    
+    if [ -n "$GITHUB_CLIENT_ID" ]; then
+        update_config_json "github_client_id" "$GITHUB_CLIENT_ID"
+        echo -e "${GREEN}✓ GitHub OAuth Client ID saved${NC}"
+    fi
+    
     echo ""
     echo -e "${YELLOW}Note: Make sure DNS is configured to point ${WEBHOOK_DOMAIN} to this server${NC}"
     echo -e "${YELLOW}      before continuing. Press Enter when DNS is ready...${NC}"

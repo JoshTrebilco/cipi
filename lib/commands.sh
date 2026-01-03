@@ -209,6 +209,9 @@ cmd_webhook() {
     shift
     
     case $subcmd in
+        setup)
+            webhook_setup "$@"
+            ;;
         show)
             webhook_show "$@"
             ;;
@@ -220,7 +223,7 @@ cmd_webhook() {
             ;;
         *)
             echo -e "${RED}Unknown webhook command: $subcmd${NC}"
-            echo "Usage: cipi webhook {show|regenerate|logs} <username>"
+            echo "Usage: cipi webhook {setup|show|regenerate|logs} <username>"
             exit 1
             ;;
     esac
