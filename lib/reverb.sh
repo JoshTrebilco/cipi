@@ -304,18 +304,19 @@ reverb_setup() {
     echo ""
     echo -e "${CYAN}Step 5/6: Creating supervisor config...${NC}"
     create_reverb_supervisor_config "$username"
-    supervisorctl reread >/dev/null 2>&1
-    supervisorctl update >/dev/null 2>&1
+    supervisorctl reread
+    supervisorctl update
     echo "  → Supervisor config created and loaded"
     
     # Start the worker
     echo "  → Starting Reverb worker..."
-    supervisorctl start reverb-worker >/dev/null 2>&1
+    supervisorctl start reverb-worker
     sleep 1
-    if supervisorctl status reverb-worker 2>/dev/null | grep -q "RUNNING"; then
+    if supervisorctl status reverb-worker | grep -q "RUNNING"; then
         echo "  → Worker started successfully"
     else
         echo -e "  ${YELLOW}⚠ Worker may need manual start: cipi reverb start${NC}"
+        supervisorctl status reverb-worker
     fi
     
     echo ""
@@ -380,14 +381,12 @@ reverb_start() {
     local username=$(get_reverb_field "app")
     if [ -n "$username" ]; then
         create_reverb_supervisor_config "$username"
-        supervisorctl reread >/dev/null 2>&1
-        supervisorctl update >/dev/null 2>&1
+        supervisorctl reread
+        supervisorctl update
     fi
     
     # Start the worker
-    supervisorctl start reverb-worker 2>/dev/null
-    
-    if [ $? -eq 0 ]; then
+    if supervisorctl start reverb-worker; then
         echo -e "${GREEN}Worker started successfully${NC}"
         echo ""
         supervisorctl status reverb-worker
@@ -408,9 +407,7 @@ reverb_stop() {
     fi
     
     echo -e "${CYAN}Stopping Reverb worker...${NC}"
-    supervisorctl stop reverb-worker 2>/dev/null
-    
-    if [ $? -eq 0 ]; then
+    if supervisorctl stop reverb-worker; then
         echo -e "${GREEN}Worker stopped successfully${NC}"
     else
         echo -e "${YELLOW}Worker may not be running${NC}"
@@ -431,20 +428,17 @@ reverb_restart() {
     local username=$(get_reverb_field "app")
     if [ -n "$username" ]; then
         create_reverb_supervisor_config "$username"
-        supervisorctl reread >/dev/null 2>&1
-        supervisorctl update >/dev/null 2>&1
+        supervisorctl reread
+        supervisorctl update
     fi
     
-    supervisorctl restart reverb-worker 2>/dev/null
-    
-    if [ $? -eq 0 ]; then
+    if supervisorctl restart reverb-worker; then
         echo -e "${GREEN}Worker restarted successfully${NC}"
         echo ""
         supervisorctl status reverb-worker
     else
         echo -e "${YELLOW}Worker may not be running, attempting to start...${NC}"
-        supervisorctl start reverb-worker 2>/dev/null
-        if [ $? -eq 0 ]; then
+        if supervisorctl start reverb-worker; then
             echo -e "${GREEN}Worker started successfully${NC}"
             echo ""
             supervisorctl status reverb-worker
@@ -484,12 +478,12 @@ reverb_delete() {
     
     echo ""
     echo -e "${CYAN}Stopping Reverb worker...${NC}"
-    supervisorctl stop reverb-worker 2>/dev/null || true
+    supervisorctl stop reverb-worker || true
     
     echo -e "${CYAN}Removing supervisor config...${NC}"
     rm -f /etc/supervisor/conf.d/reverb-worker.conf
-    supervisorctl reread >/dev/null 2>&1
-    supervisorctl update >/dev/null 2>&1
+    supervisorctl reread
+    supervisorctl update
     
     echo -e "${CYAN}Deleting Reverb app...${NC}"
     provision_delete "$username" --force
