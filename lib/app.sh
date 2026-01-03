@@ -150,10 +150,6 @@ app_create() {
     echo "  → Creating deployment script..."
     create_deploy_script "$username" "$repository" "$branch"
     
-    # Create SSL script
-    echo "  → Creating SSL script..."
-    create_ssl_script "$username"
-    
     # Generate webhook secret
     echo "  → Generating webhook secret..."
     local webhook_secret=$(generate_webhook_secret)

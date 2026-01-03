@@ -141,21 +141,60 @@ domain_create() {
     echo "  → Reloading Nginx..."
     nginx_reload
     
-    # Save to storage
+    # Save to storage (initially without SSL)
     local domain_data=$(jq -n \
         --arg vh "$app" \
         '{app: $vh, ssl: false}')
     
     json_set "${DOMAINS_FILE}" "$domain" "$domain_data"
     
+    # Attempt automatic SSL setup (skip for wildcard domains)
+    local ssl_success=false
+    if [[ "$domain" != *"*"* ]]; then
+        echo "  → Setting up SSL certificate..."
+        local ssl_email=$(get_config "ssl_email")
+        
+        if [ -z "$ssl_email" ]; then
+            echo -e "  ${YELLOW}⚠ SSL email not configured, skipping SSL setup${NC}"
+            echo -e "  ${YELLOW}Configure with: cipi config set ssl_email your@email.com${NC}"
+        else
+            # Request SSL certificate
+            if certbot certonly --nginx -d "$domain" --non-interactive --agree-tos --email "$ssl_email" >/dev/null 2>&1; then
+                # Check if certificate was actually obtained
+                if [ -d "/etc/letsencrypt/live/$domain" ]; then
+                    # Update nginx config with SSL
+                    if add_ssl_to_nginx "$app" "$domain" "$php_version"; then
+                        # Update domain storage to set ssl: true
+                        local updated_data=$(echo "$domain_data" | jq '.ssl = true')
+                        json_set "${DOMAINS_FILE}" "$domain" "$updated_data"
+                        nginx_reload
+                        ssl_success=true
+                        echo -e "  ${GREEN}✓ SSL certificate installed and configured${NC}"
+                    else
+                        echo -e "  ${YELLOW}⚠ Certificate obtained but failed to update Nginx config${NC}"
+                    fi
+                else
+                    echo -e "  ${YELLOW}⚠ Certificate directory not found${NC}"
+                fi
+            else
+                echo -e "  ${YELLOW}⚠ SSL certificate setup failed (DNS may not be configured yet)${NC}"
+                echo -e "  ${YELLOW}Domain will work on HTTP. SSL can be configured later.${NC}"
+            fi
+        fi
+    else
+        echo -e "  ${YELLOW}⚠ Wildcard domain detected - SSL requires manual DNS validation${NC}"
+    fi
+    
     echo ""
     echo -e "${GREEN}${BOLD}Domain assigned successfully!${NC}"
     echo "─────────────────────────────────────"
     echo -e "Domain:       ${CYAN}$domain${NC}"
     echo -e "Virtual Host: ${CYAN}$app${NC}"
-    echo ""
-    echo -e "${YELLOW}To enable SSL, run:${NC}"
-    echo -e "  sudo -u $app /home/$app/ssl.sh"
+    if [ "$ssl_success" = true ]; then
+        echo -e "SSL:          ${GREEN}Enabled${NC}"
+    else
+        echo -e "SSL:          ${YELLOW}Not configured${NC}"
+    fi
     echo ""
 }
 

@@ -18,15 +18,12 @@ provision_create() {
     local skip_db=false
     local skip_domain=false
     local skip_env=false
-    local skip_ssl=false
     local skip_deploy=false
-    local ssl_email=""
     
     # Track which skip flags were explicitly set via command line
     local skip_db_set=false
     local skip_domain_set=false
     local skip_env_set=false
-    local skip_ssl_set=false
     local skip_deploy_set=false
     
     # Parse arguments
@@ -47,9 +44,6 @@ provision_create() {
             --domain=*)
                 domain="${arg#*=}"
                 ;;
-            --ssl-email=*)
-                ssl_email="${arg#*=}"
-                ;;
             --dbname=*)
                 dbname="${arg#*=}"
                 ;;
@@ -64,10 +58,6 @@ provision_create() {
             --skip-env)
                 skip_env=true
                 skip_env_set=true
-                ;;
-            --skip-ssl)
-                skip_ssl=true
-                skip_ssl_set=true
                 ;;
             --skip-deploy)
                 skip_deploy=true
@@ -163,25 +153,6 @@ provision_create() {
             fi
         fi
         
-        # Skip SSL prompt (only if domain is being created)
-        if [ "$skip_domain" = false ] && [ "$skip_ssl_set" = false ]; then
-            read -p "Setup SSL certificate? (Y/n): " setup_ssl
-            if [ "$setup_ssl" = "n" ] || [ "$setup_ssl" = "N" ]; then
-                skip_ssl=true
-            fi
-        fi
-        
-        # SSL email prompt (if setting up SSL)
-        if [ "$skip_ssl" = false ] && [ "$skip_domain" = false ] && [ -z "$ssl_email" ]; then
-            local default_ssl_email=$(get_config "ssl_email")
-            if [ -n "$default_ssl_email" ]; then
-                read -p "SSL email [$default_ssl_email]: " ssl_email
-                ssl_email=${ssl_email:-$default_ssl_email}
-            else
-                read -p "SSL email: " ssl_email
-            fi
-        fi
-        
         # Skip deploy prompt
         if [ "$skip_deploy_set" = false ]; then
             read -p "Run initial deployment? (Y/n): " run_deploy
@@ -203,11 +174,6 @@ provision_create() {
         dbname="$username"
     fi
     
-    # Set default SSL email from config if not provided
-    if [ "$skip_ssl" = false ] && [ "$skip_domain" = false ] && [ -z "$ssl_email" ]; then
-        ssl_email=$(get_config "ssl_email")
-    fi
-    
     # Validate required parameters
     if [ -z "$username" ] || [ -z "$repository" ]; then
         echo -e "${RED}Error: Username and repository are required${NC}"
@@ -223,13 +189,11 @@ provision_create() {
         echo "  --branch=BRANCH          Git branch (default: main)"
         echo "  --php=VERSION            PHP version (default: 8.4)"
         echo "  --dbname=DBNAME          Database name (defaults to username)"
-        echo "  --ssl-email=EMAIL        Email for Let's Encrypt certificate"
         echo ""
         echo "Skip flags (all features enabled by default):"
         echo "  --skip-db                Skip database creation"
         echo "  --skip-domain            Skip domain creation"
         echo "  --skip-env               Skip .env file updates"
-        echo "  --skip-ssl               Skip SSL certificate setup"
         echo "  --skip-deploy            Skip initial deployment"
         echo ""
         echo "Non-interactive mode requires at least --user and --repository."
@@ -258,7 +222,6 @@ provision_create() {
     [ "$skip_domain" = false ] && ((total_steps++))
     [ "$skip_db" = false ] && ((total_steps++))
     [ "$skip_env" = false ] && ((total_steps++))
-    [ "$skip_ssl" = false ] && [ "$skip_domain" = false ] && ((total_steps++))
     [ "$skip_deploy" = false ] && ((total_steps++))
     
     # Store app password for summary
@@ -352,45 +315,7 @@ provision_create() {
         ((step++))
     fi
     
-    # Step 5: Setup SSL
-    if [ "$skip_ssl" = false ] && [ "$skip_domain" = false ]; then
-        echo ""
-        echo -e "${CYAN}Step ${step}/${total_steps}: Setting up SSL certificate...${NC}"
-        
-        # Run SSL script (run directly since we're already root)
-        echo "  → Requesting Let's Encrypt certificate..."
-        if [ -f "$home_dir/ssl.sh" ]; then
-            "$home_dir/ssl.sh" 2>&1 | grep -v "^$" | head -10
-            
-            if [ ${PIPESTATUS[0]} -eq 0 ]; then
-                # Check if certificate was actually obtained
-                if [ -d "/etc/letsencrypt/live/$domain" ]; then
-                    echo "  → Updating Nginx configuration with SSL..."
-                    
-                    # Update nginx config with SSL
-                    if add_ssl_to_nginx "$username" "$domain" "$php_version"; then
-                        # Reload nginx
-                        nginx_reload
-                        echo "  → SSL certificate installed and configured"
-                    else
-                        echo -e "  → ${YELLOW}Failed to update Nginx SSL configuration${NC}"
-                        echo -e "  → ${YELLOW}Run manually: sudo cipi domain create --domain=$domain --app=$username${NC}"
-                    fi
-                else
-                    echo -e "  → ${YELLOW}Certificate directory not found, SSL may need manual configuration${NC}"
-                    echo -e "  → ${YELLOW}Run manually: $home_dir/ssl.sh${NC}"
-                fi
-            else
-                echo -e "  → ${YELLOW}SSL setup may require DNS configuration${NC}"
-                echo -e "  → ${YELLOW}Run manually: $home_dir/ssl.sh${NC}"
-            fi
-        else
-            echo -e "  → ${YELLOW}SSL script not found${NC}"
-        fi
-        ((step++))
-    fi
-    
-    # Step 6: Run deployment
+    # Step 5: Run deployment
     if [ "$skip_deploy" = false ]; then
         echo ""
         echo -e "${CYAN}Step ${step}/${total_steps}: Running initial deployment...${NC}"
@@ -447,7 +372,6 @@ provision_create() {
     
     echo ""
     echo -e "${BOLD}Next Steps${NC}"
-    [ "$skip_ssl" = false ] && [ "$skip_domain" = false ] && echo -e "• SSL (if needed): ${CYAN}sudo -u $username $home_dir/ssl.sh${NC}"
     echo -e "• Edit .env: ${CYAN}cipi app env $username${NC}"
     echo -e "• View app: ${CYAN}cipi app show $username${NC}"
     echo -e "• Deploy: ${CYAN}sudo -u $username $home_dir/deploy.sh${NC}"
