@@ -4,98 +4,6 @@
 # App Management Functions
 #############################################
 
-# Helper: Convert HTTPS Git URL to SSH format
-convert_https_to_ssh_url() {
-    local url=$1
-    
-    # If already SSH format, return as-is
-    if [[ "$url" =~ ^git@ ]] || [[ "$url" =~ ^ssh:// ]]; then
-        echo "$url"
-        return
-    fi
-    
-    # Convert HTTPS to SSH format
-    # https://github.com/user/repo.git -> git@github.com:user/repo.git
-    # https://gitlab.com/user/repo.git -> git@gitlab.com:user/repo.git
-    if [[ "$url" =~ ^https://([^/]+)/(.+)/(.+)(\.git)?$ ]]; then
-        local host="${BASH_REMATCH[1]}"
-        local user="${BASH_REMATCH[2]}"
-        local repo="${BASH_REMATCH[3]}"
-        # Remove .git suffix if present
-        repo="${repo%.git}"
-        echo "git@${host}:${user}/${repo}.git"
-    else
-        # If pattern doesn't match, return original
-        echo "$url"
-    fi
-}
-
-# Helper: Configure Git to use SSH (SSH config + remote URL conversion)
-configure_git_for_ssh() {
-    local username=$1
-    local home_dir=$2
-    local wwwroot="$home_dir/wwwroot"
-    
-    # Configure SSH for Git (accept known hosts automatically for common providers)
-    # This allows automated deployments without manual host key verification
-    cat > "$home_dir/.ssh/config" <<'SSHCONFIG'
-Host github.com
-    StrictHostKeyChecking accept-new
-    LogLevel ERROR
-
-Host gitlab.com
-    StrictHostKeyChecking accept-new
-    LogLevel ERROR
-
-Host bitbucket.org
-    StrictHostKeyChecking accept-new
-    LogLevel ERROR
-SSHCONFIG
-    chown "$username:$username" "$home_dir/.ssh/config"
-    chmod 600 "$home_dir/.ssh/config"
-    
-    # Pre-add known hosts for common Git providers (prevents first-connection prompts)
-    # GitHub
-    if ! sudo -u "$username" ssh-keygen -F github.com >/dev/null 2>&1; then
-        ssh-keyscan -t rsa github.com 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
-    fi
-    # GitLab
-    if ! sudo -u "$username" ssh-keygen -F gitlab.com >/dev/null 2>&1; then
-        ssh-keyscan -t rsa gitlab.com 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
-    fi
-    # Bitbucket
-    if ! sudo -u "$username" ssh-keygen -F bitbucket.org >/dev/null 2>&1; then
-        ssh-keyscan -t rsa bitbucket.org 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
-    fi
-    chown "$username:$username" "$home_dir/.ssh/known_hosts" 2>/dev/null || true
-    chmod 600 "$home_dir/.ssh/known_hosts" 2>/dev/null || true
-    
-    # Get current remote URL and convert HTTPS to SSH if needed
-    local current_url=$(sudo -u "$username" git -C "$wwwroot" config --get remote.origin.url 2>/dev/null)
-    
-    if [ -z "$current_url" ]; then
-        return 0
-    fi
-    
-    # If already SSH format, nothing to do
-    if [[ "$current_url" =~ ^git@ ]] || [[ "$current_url" =~ ^ssh:// ]]; then
-        return 0
-    fi
-    
-    # Convert HTTPS to SSH
-    if [[ "$current_url" =~ ^https:// ]]; then
-        local ssh_url=$(convert_https_to_ssh_url "$current_url")
-        echo "  → Converting Git remote from HTTPS to SSH..."
-        sudo -u "$username" git -C "$wwwroot" remote set-url origin "$ssh_url" 2>/dev/null
-        
-        if [ $? -eq 0 ]; then
-            echo "  → Git remote configured to use SSH"
-        else
-            echo -e "  ${YELLOW}⚠ Warning: Failed to update Git remote URL${NC}"
-        fi
-    fi
-}
-
 # Create app
 app_create() {
     local username=""
@@ -223,11 +131,30 @@ app_create() {
     chown "$username:$username" "$home_dir/gitkey.pub"
     chmod 644 "$home_dir/gitkey.pub"
     
+    # Check if GitHub private repo - if so, add deploy key before cloning
+    echo "  → Checking repository access..."
+    local repo_visibility=$(check_github_repo_is_private "$repository")
+    local deploy_key_failed=false
+    
+    if [ "$repo_visibility" = "private" ]; then
+        local public_key=$(cat "$home_dir/gitkey.pub")
+        if ! add_github_deploy_key "$repository" "cipi-$username" "$public_key"; then
+            deploy_key_failed=true
+            echo -e "  ${YELLOW}⚠ Could not add deploy key automatically${NC}"
+            echo -e "  ${YELLOW}  Please add this key as a deploy key to your repository:${NC}"
+            echo ""
+            cat "$home_dir/gitkey.pub"
+            echo ""
+            read -p "  Press Enter once you've added the key to continue, or Ctrl+C to abort..."
+        fi
+    fi
+    
     # Clone repository
     echo "  → Cloning repository..."
     sudo -u "$username" git clone -b "$branch" "$repository" "$home_dir/wwwroot" 2>/dev/null
     if [ $? -ne 0 ]; then
         echo -e "${RED}Error: Failed to clone repository${NC}"
+        echo -e "${YELLOW}If this is a private repository, ensure the deploy key was added correctly.${NC}"
         delete_system_user "$username"
         rm -rf "$home_dir"
         exit 1
@@ -332,13 +259,17 @@ EOF
     echo ""
     echo -e "${YELLOW}${BOLD}IMPORTANT: Save these credentials!${NC}"
     echo ""
-    echo -e "${CYAN}Git SSH Public Key:${NC}"
-    echo -e "Add this key to your Git provider (GitHub/GitLab) for private repositories:"
-    echo ""
-    cat "$home_dir/gitkey.pub"
-    echo ""
-    echo -e "Key also available at: ${CYAN}$home_dir/gitkey.pub${NC}"
-    echo ""
+    
+    # Show SSH key only if private repo and deploy key wasn't added automatically
+    if [ "$repo_visibility" = "private" ] && [ "$deploy_key_failed" = true ]; then
+        echo -e "${CYAN}Git SSH Public Key:${NC}"
+        echo -e "Add this key to your Git provider (GitHub/GitLab) for private repositories:"
+        echo ""
+        cat "$home_dir/gitkey.pub"
+        echo ""
+        echo -e "Key also available at: ${CYAN}$home_dir/gitkey.pub${NC}"
+        echo ""
+    fi
     
     # Show manual webhook instructions only if auto-setup failed or wasn't attempted
     if [ "$webhook_setup_failed" = true ] || [ -z "$github_client_id" ]; then

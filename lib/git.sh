@@ -1,0 +1,282 @@
+#!/bin/bash
+
+#############################################
+# Git Helper Functions
+#############################################
+
+# Helper: Convert HTTPS Git URL to SSH format
+convert_https_to_ssh_url() {
+    local url=$1
+    
+    # If already SSH format, return as-is
+    if [[ "$url" =~ ^git@ ]] || [[ "$url" =~ ^ssh:// ]]; then
+        echo "$url"
+        return
+    fi
+    
+    # Convert HTTPS to SSH format
+    # https://github.com/user/repo.git -> git@github.com:user/repo.git
+    # https://gitlab.com/user/repo.git -> git@gitlab.com:user/repo.git
+    if [[ "$url" =~ ^https://([^/]+)/(.+)/(.+)(\.git)?$ ]]; then
+        local host="${BASH_REMATCH[1]}"
+        local user="${BASH_REMATCH[2]}"
+        local repo="${BASH_REMATCH[3]}"
+        # Remove .git suffix if present
+        repo="${repo%.git}"
+        echo "git@${host}:${user}/${repo}.git"
+    else
+        # If pattern doesn't match, return original
+        echo "$url"
+    fi
+}
+
+# Helper: Configure Git to use SSH (SSH config + remote URL conversion)
+configure_git_for_ssh() {
+    local username=$1
+    local home_dir=$2
+    local wwwroot="$home_dir/wwwroot"
+    
+    # Configure SSH for Git (accept known hosts automatically for common providers)
+    # This allows automated deployments without manual host key verification
+    cat > "$home_dir/.ssh/config" <<'SSHCONFIG'
+Host github.com
+    StrictHostKeyChecking accept-new
+    LogLevel ERROR
+
+Host gitlab.com
+    StrictHostKeyChecking accept-new
+    LogLevel ERROR
+
+Host bitbucket.org
+    StrictHostKeyChecking accept-new
+    LogLevel ERROR
+SSHCONFIG
+    chown "$username:$username" "$home_dir/.ssh/config"
+    chmod 600 "$home_dir/.ssh/config"
+    
+    # Pre-add known hosts for common Git providers (prevents first-connection prompts)
+    # GitHub
+    if ! sudo -u "$username" ssh-keygen -F github.com >/dev/null 2>&1; then
+        ssh-keyscan -t rsa github.com 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
+    fi
+    # GitLab
+    if ! sudo -u "$username" ssh-keygen -F gitlab.com >/dev/null 2>&1; then
+        ssh-keyscan -t rsa gitlab.com 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
+    fi
+    # Bitbucket
+    if ! sudo -u "$username" ssh-keygen -F bitbucket.org >/dev/null 2>&1; then
+        ssh-keyscan -t rsa bitbucket.org 2>/dev/null | sudo -u "$username" tee -a "$home_dir/.ssh/known_hosts" >/dev/null 2>&1
+    fi
+    chown "$username:$username" "$home_dir/.ssh/known_hosts" 2>/dev/null || true
+    chmod 600 "$home_dir/.ssh/known_hosts" 2>/dev/null || true
+    
+    # Get current remote URL and convert HTTPS to SSH if needed
+    local current_url=$(sudo -u "$username" git -C "$wwwroot" config --get remote.origin.url 2>/dev/null)
+    
+    if [ -z "$current_url" ]; then
+        return 0
+    fi
+    
+    # If already SSH format, nothing to do
+    if [[ "$current_url" =~ ^git@ ]] || [[ "$current_url" =~ ^ssh:// ]]; then
+        return 0
+    fi
+    
+    # Convert HTTPS to SSH
+    if [[ "$current_url" =~ ^https:// ]]; then
+        local ssh_url=$(convert_https_to_ssh_url "$current_url")
+        echo "  → Converting Git remote from HTTPS to SSH..."
+        sudo -u "$username" git -C "$wwwroot" remote set-url origin "$ssh_url" 2>/dev/null
+        
+        if [ $? -eq 0 ]; then
+            echo "  → Git remote configured to use SSH"
+        else
+            echo -e "  ${YELLOW}⚠ Warning: Failed to update Git remote URL${NC}"
+        fi
+    fi
+}
+
+# Helper: Parse GitHub owner/repo from a git URL
+# Returns owner/repo if GitHub URL, empty if not
+parse_github_owner_repo() {
+    local repository=$1
+    
+    if [[ "$repository" =~ github\.com[:/]([^/]+)/([^/.]+)(\.git)?$ ]]; then
+        echo "${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+    fi
+}
+
+# Helper: Check if a GitHub repo is private
+# Returns: "private", "public", or "unknown" (if not GitHub or API error)
+check_github_repo_is_private() {
+    local repository=$1
+    local owner_repo=$(parse_github_owner_repo "$repository")
+    
+    # Not a GitHub URL
+    if [ -z "$owner_repo" ]; then
+        echo "unknown"
+        return
+    fi
+    
+    # Try unauthenticated API call
+    local response=$(curl -s -w "\n%{http_code}" \
+        "https://api.github.com/repos/$owner_repo" \
+        -H "Accept: application/vnd.github+json")
+    
+    local http_code=$(echo "$response" | tail -n1)
+    local body=$(echo "$response" | sed '$d')
+    
+    if [ "$http_code" = "200" ]; then
+        local is_private=$(echo "$body" | jq -r '.private // false')
+        if [ "$is_private" = "true" ]; then
+            echo "private"
+        else
+            echo "public"
+        fi
+    elif [ "$http_code" = "404" ]; then
+        # 404 means private repo (or doesn't exist, but we'll find out during clone)
+        echo "private"
+    else
+        echo "unknown"
+    fi
+}
+
+# Helper: Add deploy key to GitHub repo using Device Flow OAuth
+# This prompts the user to authorize via browser, then adds the key
+add_github_deploy_key() {
+    local repository=$1
+    local key_title=$2
+    local public_key=$3
+    
+    local owner_repo=$(parse_github_owner_repo "$repository")
+    
+    if [ -z "$owner_repo" ]; then
+        echo -e "  ${YELLOW}⚠ Not a GitHub repository, skipping deploy key setup${NC}"
+        return 1
+    fi
+    
+    # Get GitHub Client ID from config
+    local github_client_id=$(get_config "github_client_id")
+    
+    if [ -z "$github_client_id" ]; then
+        echo -e "  ${YELLOW}⚠ GitHub OAuth not configured, cannot add deploy key automatically${NC}"
+        echo -e "  ${YELLOW}  Add the SSH key manually to your repository as a deploy key${NC}"
+        return 1
+    fi
+    
+    echo ""
+    echo -e "  ${CYAN}Private repository detected - adding deploy key via GitHub API...${NC}"
+    
+    # Step 1: Request device code (need write:public_key scope for deploy keys)
+    local device_response=$(curl -s -X POST \
+        "https://github.com/login/device/code" \
+        -H "Accept: application/json" \
+        -d "client_id=$github_client_id&scope=repo")
+    
+    local device_code=$(echo "$device_response" | jq -r '.device_code // empty')
+    local user_code=$(echo "$device_response" | jq -r '.user_code // empty')
+    local verification_uri=$(echo "$device_response" | jq -r '.verification_uri // empty')
+    local interval=$(echo "$device_response" | jq -r '.interval // 5')
+    local expires_in=$(echo "$device_response" | jq -r '.expires_in // 900')
+    
+    if [ -z "$device_code" ] || [ "$device_code" = "null" ]; then
+        local error=$(echo "$device_response" | jq -r '.error // "Unknown error"')
+        echo -e "  ${RED}Error: Failed to initiate GitHub authorization${NC}"
+        return 1
+    fi
+    
+    # Step 2: Prompt user to authorize
+    echo ""
+    echo "  ─────────────────────────────────────"
+    echo -e "  ${YELLOW}${BOLD}GitHub Authorization Required${NC}"
+    echo ""
+    echo -e "    1. Open: ${CYAN}${BOLD}$verification_uri${NC}"
+    echo -e "    2. Enter code: ${GREEN}${BOLD}$user_code${NC}"
+    echo ""
+    echo "  Waiting for authorization..."
+    echo "  ─────────────────────────────────────"
+    
+    # Step 3: Poll for authorization
+    local access_token=""
+    local elapsed=0
+    local poll_count=0
+    
+    while [ $elapsed -lt $expires_in ]; do
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+        poll_count=$((poll_count + 1))
+        
+        # Show progress every 5 polls
+        if [ $((poll_count % 5)) -eq 0 ]; then
+            printf "  ."
+        fi
+        
+        local token_response=$(curl -s -X POST \
+            "https://github.com/login/oauth/access_token" \
+            -H "Accept: application/json" \
+            -d "client_id=$github_client_id&device_code=$device_code&grant_type=urn:ietf:params:oauth:grant-type:device_code")
+        
+        local error=$(echo "$token_response" | jq -r '.error // empty')
+        
+        if [ "$error" = "authorization_pending" ]; then
+            continue
+        elif [ "$error" = "slow_down" ]; then
+            interval=$((interval + 5))
+            continue
+        elif [ -n "$error" ] && [ "$error" != "null" ]; then
+            echo ""
+            echo -e "  ${RED}Error: Authorization failed - $error${NC}"
+            return 1
+        fi
+        
+        access_token=$(echo "$token_response" | jq -r '.access_token // empty')
+        if [ -n "$access_token" ] && [ "$access_token" != "null" ]; then
+            break
+        fi
+    done
+    
+    if [ -z "$access_token" ] || [ "$access_token" = "null" ]; then
+        echo ""
+        echo -e "  ${RED}Error: Authorization timed out${NC}"
+        return 1
+    fi
+    
+    echo ""
+    echo -e "  ${GREEN}✓ Authorized!${NC}"
+    
+    # Step 4: Add deploy key
+    echo -e "  ${CYAN}Adding deploy key to $owner_repo...${NC}"
+    
+    local key_response=$(curl -s -X POST \
+        "https://api.github.com/repos/$owner_repo/keys" \
+        -H "Authorization: Bearer $access_token" \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        -d "{
+            \"title\": \"$key_title\",
+            \"key\": \"$public_key\",
+            \"read_only\": true
+        }")
+    
+    # Clear token immediately
+    unset access_token
+    
+    local key_id=$(echo "$key_response" | jq -r '.id // empty')
+    local error_msg=$(echo "$key_response" | jq -r '.message // empty')
+    
+    if [ -z "$key_id" ] || [ "$key_id" = "null" ]; then
+        # Check if key already exists (common error)
+        if [[ "$error_msg" == *"key is already in use"* ]]; then
+            echo -e "  ${GREEN}✓ Deploy key already exists on repository${NC}"
+            return 0
+        fi
+        echo -e "  ${RED}Error: Failed to add deploy key: $error_msg${NC}"
+        return 1
+    fi
+    
+    echo -e "  ${GREEN}✓ Deploy key added successfully (ID: $key_id)${NC}"
+    echo ""
+    return 0
+}
+
+
