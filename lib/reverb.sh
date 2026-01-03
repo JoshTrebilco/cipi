@@ -456,3 +456,49 @@ reverb_restart() {
     echo ""
 }
 
+# Delete Reverb configuration and app
+reverb_delete() {
+    # Get username from config, or default to "reverb"
+    local default_username=$(get_reverb_field "app")
+    default_username=${default_username:-reverb}
+    
+    echo -e "${BOLD}Delete Reverb${NC}"
+    echo "─────────────────────────────────────"
+    echo ""
+    
+    read -p "Username [$default_username]: " input_username
+    local username=${input_username:-$default_username}
+    
+    echo ""
+    echo -e "This will delete:"
+    echo -e "  • Reverb app: ${CYAN}$username${NC}"
+    echo -e "  • Supervisor worker config"
+    echo -e "  • Reverb configuration (reverb.json)"
+    echo ""
+    
+    read -p "Type 'delete' to confirm: " confirm
+    if [ "$confirm" != "delete" ]; then
+        echo "Cancelled."
+        exit 0
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Stopping Reverb worker...${NC}"
+    supervisorctl stop reverb-worker 2>/dev/null || true
+    
+    echo -e "${CYAN}Removing supervisor config...${NC}"
+    rm -f /etc/supervisor/conf.d/reverb-worker.conf
+    supervisorctl reread >/dev/null 2>&1
+    supervisorctl update >/dev/null 2>&1
+    
+    echo -e "${CYAN}Deleting Reverb app...${NC}"
+    provision_delete "$username" --force
+    
+    echo -e "${CYAN}Removing reverb.json...${NC}"
+    rm -f "${REVERB_FILE}"
+    
+    echo ""
+    echo -e "${GREEN}Reverb deleted successfully${NC}"
+    echo ""
+}
+

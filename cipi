@@ -123,6 +123,7 @@ show_help() {
     echo -e "  ${CYAN}reverb start${NC}                    Start Reverb server"
     echo -e "  ${CYAN}reverb stop${NC}                     Stop Reverb server"
     echo -e "  ${CYAN}reverb restart${NC}                  Restart Reverb server"
+    echo -e "  ${CYAN}reverb delete${NC}                   Delete Reverb server"
     echo ""
     echo -e "${BOLD}System Management:${NC}"
     echo -e "  ${CYAN}logs [--lines=N]${NC}                View ClamAV antivirus scan logs"
