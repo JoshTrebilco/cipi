@@ -117,6 +117,10 @@ show_help() {
     echo -e "  ${CYAN}webhook regenerate <user>${NC}       Regenerate webhook secret"
     echo -e "  ${CYAN}webhook logs${NC}                    View webhook logs"
     echo ""
+    echo -e "${BOLD}Reverb (WebSocket Server):${NC}"
+    echo -e "  ${CYAN}reverb setup${NC}                    Set up dedicated Reverb WebSocket server"
+    echo -e "  ${CYAN}reverb show${NC}                     Show Reverb server configuration"
+    echo ""
     echo -e "${BOLD}System Management:${NC}"
     echo -e "  ${CYAN}logs [--lines=N]${NC}                View ClamAV antivirus scan logs"
     echo -e "  ${CYAN}update${NC}                          Update Cipi to latest version"
@@ -183,6 +187,9 @@ main() {
             ;;
         webhook)
             cmd_webhook "$@"
+            ;;
+        reverb)
+            cmd_reverb "$@"
             ;;
         update)
             cmd_update "$@"

@@ -226,6 +226,26 @@ cmd_webhook() {
     esac
 }
 
+# Reverb commands
+cmd_reverb() {
+    local subcmd=$1
+    shift
+    
+    case $subcmd in
+        setup)
+            reverb_setup "$@"
+            ;;
+        show)
+            reverb_show "$@"
+            ;;
+        *)
+            echo -e "${RED}Unknown reverb command: $subcmd${NC}"
+            echo "Usage: cipi reverb {setup|show}"
+            exit 1
+            ;;
+    esac
+}
+
 # Update command
 cmd_update() {
     update_cipi "$@"

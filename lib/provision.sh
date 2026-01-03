@@ -19,12 +19,14 @@ provision_create() {
     local skip_domain=false
     local skip_env=false
     local skip_deploy=false
+    local skip_reverb=false
     
     # Track which skip flags were explicitly set via command line
     local skip_db_set=false
     local skip_domain_set=false
     local skip_env_set=false
     local skip_deploy_set=false
+    local skip_reverb_set=false
     
     # Parse arguments
     for arg in "$@"; do
@@ -62,6 +64,10 @@ provision_create() {
             --skip-deploy)
                 skip_deploy=true
                 skip_deploy_set=true
+                ;;
+            --skip-reverb)
+                skip_reverb=true
+                skip_reverb_set=true
                 ;;
         esac
     done
@@ -161,6 +167,14 @@ provision_create() {
             fi
         fi
         
+        # Skip reverb prompt
+        if [ "$skip_reverb_set" = false ] && reverb_is_configured; then
+            read -p "Connect to Reverb WebSocket server? (Y/n): " enable_reverb
+            if [ "$enable_reverb" = "n" ] || [ "$enable_reverb" = "N" ]; then
+                skip_reverb=true
+            fi
+        fi
+        
         echo ""
     fi
     
@@ -195,6 +209,7 @@ provision_create() {
         echo "  --skip-domain            Skip domain creation"
         echo "  --skip-env               Skip .env file updates"
         echo "  --skip-deploy            Skip initial deployment"
+        echo "  --skip-reverb            Skip Reverb WebSocket server connection"
         echo ""
         echo "Non-interactive mode requires at least --user and --repository."
         echo ""
@@ -232,7 +247,11 @@ provision_create() {
     
     # Capture app_create output to get the password
     local app_output=$(mktemp)
-    app_create --user="$username" --repository="$repository" --branch="$branch" --php="$php_version" 2>&1 | tee "$app_output"
+    local app_create_args="--user=$username --repository=$repository --branch=$branch --php=$php_version"
+    if [ "$skip_reverb" = true ]; then
+        app_create_args="$app_create_args --skip-reverb"
+    fi
+    app_create $app_create_args 2>&1 | tee "$app_output"
     
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
         echo -e "${RED}Error: Failed to create app${NC}"

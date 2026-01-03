@@ -11,6 +11,7 @@ DATABASES_FILE="${STORAGE_DIR}/databases.json"
 CONFIG_FILE="${STORAGE_DIR}/config.json"
 WEBHOOKS_FILE="${STORAGE_DIR}/webhooks.json"
 VERSION_FILE="${STORAGE_DIR}/version.json"
+REVERB_FILE="${STORAGE_DIR}/reverb.json"
 
 # Initialize storage
 init_storage() {
@@ -305,3 +306,40 @@ set_version() {
     json_write "${VERSION_FILE}" "$version_data"
 }
 
+#############################################
+# Reverb Helpers
+#############################################
+
+# Check if Reverb is configured
+reverb_is_configured() {
+    [ -f "${REVERB_FILE}" ] && [ "$(get_reverb_field 'app')" != "" ]
+}
+
+# Get Reverb field
+get_reverb_field() {
+    local field=$1
+    if [ -f "${REVERB_FILE}" ]; then
+        jq -r ".$field // empty" "${REVERB_FILE}" 2>/dev/null
+    fi
+}
+
+# Save all Reverb config at once
+save_reverb_config() {
+    local app=$1
+    local domain=$2
+    local app_id=$3
+    local app_key=$4
+    local app_secret=$5
+    
+    cat > "${REVERB_FILE}" <<EOF
+{
+    "app": "$app",
+    "domain": "$domain",
+    "app_id": "$app_id",
+    "app_key": "$app_key",
+    "app_secret": "$app_secret",
+    "created_at": "$(date -Iseconds)"
+}
+EOF
+    chmod 600 "${REVERB_FILE}"
+}

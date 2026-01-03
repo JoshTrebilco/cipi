@@ -26,14 +26,13 @@ server {
     root ${root_path};
     
     add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
     add_header X-Content-Type-Options "nosniff";
     
     client_body_timeout 10s;
     client_header_timeout 10s;
     client_max_body_size 256M;
     
-    index index.html index.php;
+    index index.php;
     charset utf-8;
     server_tokens off;
     
@@ -110,14 +109,13 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     
     add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
     add_header X-Content-Type-Options "nosniff";
     
     client_body_timeout 10s;
     client_header_timeout 10s;
     client_max_body_size 256M;
     
-    index index.html index.php;
+    index index.php;
     charset utf-8;
     server_tokens off;
     

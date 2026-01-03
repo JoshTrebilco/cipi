@@ -7,6 +7,7 @@
 source "${CIPI_LIB_DIR}/nginx.sh"
 source "${CIPI_LIB_DIR}/php.sh"
 source "${CIPI_LIB_DIR}/webhook.sh"
+source "${CIPI_LIB_DIR}/reverb.sh"
 
 # Helper: Convert HTTPS Git URL to SSH format
 convert_https_to_ssh_url() {
@@ -107,6 +108,7 @@ app_create() {
     local branch=""
     local php_version="8.4"
     local interactive=true
+    local skip_reverb=false
     
     # Parse arguments
     for arg in "$@"; do
@@ -122,6 +124,9 @@ app_create() {
                 ;;
             --php=*)
                 php_version="${arg#*=}"
+                ;;
+            --skip-reverb)
+                skip_reverb=true
                 ;;
         esac
     done
@@ -164,6 +169,15 @@ app_create() {
             read -p "Choice [1]: " php_choice
             php_choice=${php_choice:-1}
             php_version=${php_versions[$((php_choice-1))]}
+        fi
+        
+        # Reverb configuration (if Reverb is set up)
+        if reverb_is_configured && [ "$skip_reverb" = false ]; then
+            echo ""
+            read -p "Connect to Reverb WebSocket server? (Y/n): " enable_reverb
+            if [ "$enable_reverb" = "n" ] || [ "$enable_reverb" = "N" ]; then
+                skip_reverb=true
+            fi
         fi
     fi
     
@@ -272,6 +286,12 @@ app_create() {
     if [ -d "$home_dir/wwwroot/bootstrap/cache" ]; then
         chmod -R 775 "$home_dir/wwwroot/bootstrap/cache"
         chgrp -R "$username" "$home_dir/wwwroot/bootstrap/cache"
+    fi
+    
+    # Configure Reverb client (if Reverb is set up and not skipped)
+    if [ "$skip_reverb" = false ] && reverb_is_configured && [ -f "$home_dir/wwwroot/artisan" ]; then
+        echo "  → Configuring Reverb client..."
+        configure_app_for_reverb "$username"
     fi
     
     # Setup crontab for user
