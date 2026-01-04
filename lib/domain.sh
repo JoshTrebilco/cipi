@@ -39,7 +39,11 @@ setup_ssl_certificate() {
     fi
     
     # Request SSL certificate (certbot will use existing HTTP config for validation)
-    if certbot certonly --nginx -d "$domain" --non-interactive --agree-tos --email "$ssl_email" >/dev/null 2>&1; then
+    local certbot_output
+    certbot_output=$(certbot certonly --nginx -d "$domain" --non-interactive --agree-tos --email "$ssl_email" 2>&1)
+    local certbot_exit=$?
+    
+    if [ $certbot_exit -eq 0 ]; then
         # Check if certificate was actually obtained
         if [ -d "/etc/letsencrypt/live/$domain" ]; then
             # Create full SSL config (overwrites certbot's auto-config with our standardized config)
@@ -59,7 +63,23 @@ setup_ssl_certificate() {
             return 1
         fi
     else
-        echo -e "  ${YELLOW}⚠ SSL certificate setup failed (DNS may not be configured yet)${NC}"
+        echo -e "  ${YELLOW}⚠ SSL certificate setup failed${NC}"
+        # Show relevant error from certbot output
+        if echo "$certbot_output" | grep -q "too many certificates"; then
+            echo -e "  ${YELLOW}Rate limit: Too many certificates issued recently${NC}"
+        elif echo "$certbot_output" | grep -q "DNS problem"; then
+            echo -e "  ${YELLOW}DNS not pointing to this server${NC}"
+        elif echo "$certbot_output" | grep -q "connection refused\|Connection refused"; then
+            echo -e "  ${YELLOW}Connection refused - check firewall/port 80${NC}"
+        elif echo "$certbot_output" | grep -q "timeout"; then
+            echo -e "  ${YELLOW}Connection timeout - check firewall/port 80${NC}"
+        else
+            # Show last meaningful line from certbot
+            local error_line=$(echo "$certbot_output" | grep -E "Error|error|failed|Failed|Problem|problem" | tail -1)
+            if [ -n "$error_line" ]; then
+                echo -e "  ${YELLOW}$error_line${NC}"
+            fi
+        fi
         echo -e "  ${YELLOW}Domain will work on HTTP. SSL can be configured later.${NC}"
         return 1
     fi
