@@ -325,7 +325,13 @@ reverb_setup() {
     set_reverb_file_limits "$username"
     
     echo ""
-    echo -e "${CYAN}Step 5/6: Creating supervisor config...${NC}"
+    echo -e "${CYAN}Step 5/6: Configuring nginx...${NC}"
+    create_reverb_nginx_config "$username" "$domain" "$php_version"
+    nginx_reload
+    echo "  → Nginx configured (app + WebSocket proxy)"
+    
+    echo ""
+    echo -e "${CYAN}Step 6/6: Creating supervisor config...${NC}"
     create_reverb_supervisor_config "$username"
     supervisor_reload_reverb
     echo "  → Supervisor config created and loaded"
@@ -338,12 +344,6 @@ reverb_setup() {
         echo -e "  ${YELLOW}⚠ Worker may need manual start: cipi reverb start${NC}"
         supervisorctl status reverb-worker
     fi
-    
-    echo ""
-    echo -e "${CYAN}Step 6/6: Configuring nginx...${NC}"
-    create_reverb_nginx_config "$username" "$domain" "$php_version"
-    nginx_reload
-    echo "  → Nginx configured (app + WebSocket proxy)"
     
     # Display summary
     echo ""
