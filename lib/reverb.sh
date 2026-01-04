@@ -65,20 +65,21 @@ create_reverb_supervisor_config() {
     
     cat > "/etc/supervisor/conf.d/reverb-worker.conf" <<EOF
 [program:reverb-worker]
-process_name=%(program_name)s_%(process_num)02d
-command=php artisan reverb:start
-directory=${project_dir}
+process_name=%(program_name)s
+command=php ${project_dir}/artisan reverb:start --no-interaction
 autostart=true
 autorestart=true
-stopasgroup=true
-killasgroup=true
 user=${username}
 numprocs=1
+startsecs=1
 redirect_stderr=true
 stdout_logfile=${log_file}
-stderr_logfile=${log_dir}/reverb-worker-error.log
-stopwaitsecs=3600
-startsecs=3
+stdout_logfile_maxbytes=5MB
+stdout_logfile_backups=3
+stopwaitsecs=5
+stopsignal=SIGTERM
+stopasgroup=true
+killasgroup=true
 environment=HOME="${home_dir}",PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EOF
 }
@@ -119,32 +120,6 @@ validate_reverb_artisan() {
     fi
     
     return 0
-}
-
-# Wait for Reverb worker to reach a state (default: RUNNING)
-# Returns 0 if reached, 1 if timeout
-wait_for_reverb_worker() {
-    local target_state="${1:-RUNNING}"
-    local timeout="${2:-10}"
-    local wait_time=0
-    
-    while [ $wait_time -lt $timeout ]; do
-        local status_output=$(supervisorctl status reverb-worker 2>/dev/null)
-        # Check for target state (RUNNING, STOPPED, etc.) or process name pattern
-        if echo "$status_output" | grep -qE "$target_state|reverb-worker:reverb-worker"; then
-            # If looking for RUNNING, make sure it's actually running
-            if [ "$target_state" = "RUNNING" ]; then
-                if echo "$status_output" | grep -q "RUNNING"; then
-                    return 0
-                fi
-            else
-                return 0
-            fi
-        fi
-        sleep 1
-        ((wait_time++))
-    done
-    return 1
 }
 
 # Set file limits for Reverb user (production optimization)
@@ -344,9 +319,9 @@ reverb_setup() {
     supervisor_reload_reverb
     echo "  → Supervisor config created and loaded"
     
-    # Wait for autostart to kick in (config has autostart=true)
+    # Start the worker (autostart may not always work immediately)
     echo "  → Starting Reverb worker..."
-    if wait_for_reverb_worker "RUNNING" 10; then
+    if supervisorctl start reverb-worker 2>/dev/null; then
         echo "  → Worker started successfully"
     else
         echo -e "  ${YELLOW}⚠ Worker failed to start automatically${NC}"
@@ -435,12 +410,8 @@ reverb_start() {
         supervisor_reload_reverb
     fi
     
-    # Wait for autostart, or try explicit start
-    if wait_for_reverb_worker "RUNNING" 10; then
-        echo -e "${GREEN}Worker started successfully${NC}"
-        echo ""
-        supervisorctl status reverb-worker
-    elif supervisorctl start reverb-worker; then
+    # Start the worker directly
+    if supervisorctl start reverb-worker; then
         echo -e "${GREEN}Worker started successfully${NC}"
         echo ""
         supervisorctl status reverb-worker
@@ -485,25 +456,13 @@ reverb_restart() {
         supervisor_reload_reverb
     fi
     
-    # Wait for process to be registered
-    wait_for_reverb_worker "RUNNING|STOPPED" 10
-    
-    # Check if running and restart, otherwise start
-    if supervisorctl status reverb-worker 2>/dev/null | grep -q "RUNNING"; then
-        if supervisorctl restart reverb-worker; then
-            echo -e "${GREEN}Worker restarted successfully${NC}"
-            echo ""
-            supervisorctl status reverb-worker
-        else
-            echo -e "${RED}Failed to restart worker${NC}"
-            exit 1
-        fi
-    elif supervisorctl start reverb-worker; then
-        echo -e "${GREEN}Worker started successfully${NC}"
+    # Restart the worker directly (restart works whether running or not)
+    if supervisorctl restart reverb-worker; then
+        echo -e "${GREEN}Worker restarted successfully${NC}"
         echo ""
         supervisorctl status reverb-worker
     else
-        echo -e "${RED}Failed to start worker${NC}"
+        echo -e "${RED}Failed to restart worker${NC}"
         exit 1
     fi
     echo ""
