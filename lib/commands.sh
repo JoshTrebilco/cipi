@@ -4,8 +4,22 @@
 # Main Command Functions
 #############################################
 
+# Check if help was requested
+check_help_requested() {
+    for arg in "$@"; do
+        if [ "$arg" = "--help" ] || [ "$arg" = "-h" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Status command
 cmd_status() {
+    if check_help_requested "$@"; then
+        show_help_command "status"
+        exit 0
+    fi
     show_logo
     echo -e "${BOLD}SERVER STATUS${NC}"
     echo "─────────────────────────────────────"
@@ -28,6 +42,11 @@ cmd_status() {
 
 # Logs command
 cmd_logs() {
+    if check_help_requested "$@"; then
+        show_help_command "logs"
+        exit 0
+    fi
+    
     local lines=50
     
     # Parse arguments
@@ -61,8 +80,20 @@ cmd_config() {
 
 # App commands
 cmd_app() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "app"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "app" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         create)
@@ -91,7 +122,13 @@ cmd_app() {
             ;;
         *)
             echo -e "${RED}Unknown app command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi app {create|list|show|edit|env|crontab|password|delete}"
+            echo "Run 'cipi app --help' for more information"
             exit 1
             ;;
     esac
@@ -99,8 +136,20 @@ cmd_app() {
 
 # Domain commands
 cmd_domain() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "domain"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "domain" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         create)
@@ -114,7 +163,13 @@ cmd_domain() {
             ;;
         *)
             echo -e "${RED}Unknown domain command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi domain {create|list|delete}"
+            echo "Run 'cipi domain --help' for more information"
             exit 1
             ;;
     esac
@@ -122,8 +177,20 @@ cmd_domain() {
 
 # Database commands
 cmd_database() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "database"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "database" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         create)
@@ -140,7 +207,13 @@ cmd_database() {
             ;;
         *)
             echo -e "${RED}Unknown database command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi database {create|list|password|delete}"
+            echo "Run 'cipi database --help' for more information"
             exit 1
             ;;
     esac
@@ -148,8 +221,20 @@ cmd_database() {
 
 # PHP commands
 cmd_php() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "php"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "php" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         list)
@@ -163,7 +248,13 @@ cmd_php() {
             ;;
         *)
             echo -e "${RED}Unknown php command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi php {list|install|switch}"
+            echo "Run 'cipi php --help' for more information"
             exit 1
             ;;
     esac
@@ -171,12 +262,30 @@ cmd_php() {
 
 # Service commands
 cmd_service() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "service"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
     
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "service" "$subcmd"
+        exit 0
+    fi
+    
     if [ "$subcmd" != "restart" ]; then
         echo -e "${RED}Unknown service command: $subcmd${NC}"
+        local suggestion=$(suggest_command "$subcmd")
+        if [ -n "$suggestion" ]; then
+            echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+            echo ""
+        fi
         echo "Usage: cipi service restart <service>"
+        echo "Run 'cipi service --help' for more information"
         exit 1
     fi
     
@@ -185,8 +294,20 @@ cmd_service() {
 
 # Provision commands
 cmd_provision() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "provision"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "provision" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         create)
@@ -197,7 +318,13 @@ cmd_provision() {
             ;;
         *)
             echo -e "${RED}Unknown provision command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi provision {create|delete}"
+            echo "Run 'cipi provision --help' for more information"
             exit 1
             ;;
     esac
@@ -205,8 +332,20 @@ cmd_provision() {
 
 # Webhook commands
 cmd_webhook() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "webhook"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "webhook" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         setup)
@@ -223,7 +362,13 @@ cmd_webhook() {
             ;;
         *)
             echo -e "${RED}Unknown webhook command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi webhook {setup|show|regenerate|logs} <username>"
+            echo "Run 'cipi webhook --help' for more information"
             exit 1
             ;;
     esac
@@ -231,8 +376,20 @@ cmd_webhook() {
 
 # Reverb commands
 cmd_reverb() {
+    # Check for --help before subcommand
+    if [ -z "$1" ] || check_help_requested "$@"; then
+        show_help_command "reverb"
+        exit 0
+    fi
+    
     local subcmd=$1
     shift
+    
+    # Check for --help after subcommand
+    if check_help_requested "$@"; then
+        show_help_subcommand "reverb" "$subcmd"
+        exit 0
+    fi
     
     case $subcmd in
         setup)
@@ -255,7 +412,13 @@ cmd_reverb() {
             ;;
         *)
             echo -e "${RED}Unknown reverb command: $subcmd${NC}"
+            local suggestion=$(suggest_command "$subcmd")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
             echo "Usage: cipi reverb {setup|show|start|stop|restart|delete}"
+            echo "Run 'cipi reverb --help' for more information"
             exit 1
             ;;
     esac
@@ -263,6 +426,11 @@ cmd_reverb() {
 
 # Update command
 cmd_update() {
+    if check_help_requested "$@"; then
+        show_help_command "update"
+        exit 0
+    fi
+    
     update_cipi "$@"
 }
 

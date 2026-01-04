@@ -149,6 +149,22 @@ update_cipi() {
     echo "  → Updating version information..."
     set_version "$latest_commit" "$BRANCH"
     
+    # Install bash completion
+    echo "  → Installing bash completion..."
+    if [ -f "${CIPI_LIB_DIR}/completion.sh" ]; then
+        # Source the completion functions
+        source "${CIPI_LIB_DIR}/completion.sh" 2>/dev/null || true
+        if type generate_bash_completion >/dev/null 2>&1; then
+            local completion_file="/etc/bash_completion.d/cipi"
+            mkdir -p /etc/bash_completion.d
+            generate_bash_completion > "$completion_file" 2>/dev/null || true
+            if [ -f "$completion_file" ]; then
+                chmod 644 "$completion_file"
+                chown root:root "$completion_file"
+            fi
+        fi
+    fi
+    
     # Cleanup
     echo "  → Cleaning up..."
     rm -rf "$tmp_dir"
@@ -163,6 +179,9 @@ update_cipi() {
     if [ -d "${CIPI_LIB_DIR}.backup" ]; then
         echo "Backup saved at: ${CIPI_LIB_DIR}.backup"
     fi
+    echo ""
+    echo -e "${YELLOW}Tip:${NC} Open a new terminal for tab completion, or run:"
+    echo -e "     ${CYAN}source /etc/bash_completion.d/cipi${NC}"
     echo ""
     
     # Exit after successful update to prevent any further execution

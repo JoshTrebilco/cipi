@@ -69,87 +69,26 @@ show_version() {
     echo ""
 }
 
-# Display help
+# Display help (compact version - default)
 show_help() {
-    show_logo
-    echo -e "${BOLD}Usage:${NC} cipi [command] [options]"
-    echo ""
-    echo -e "${BOLD}Commands:${NC}"
-    echo ""
-    echo -e "  ${CYAN}status${NC}                          Show server status"
-    echo -e "  ${CYAN}version${NC}                         Show Cipi version"
-    echo ""
-    echo -e "${BOLD}Provision (Quick Setup):${NC}"
-    echo -e "  ${CYAN}provision create${NC}                Create app, domain, database, SSL, and configure .env"
-    echo -e "  ${CYAN}provision delete <user>${NC}         Delete app and optionally database"
-    echo ""
-    echo -e "${BOLD}App Management:${NC}"
-    echo -e "  ${CYAN}app create${NC}                      Create a new app"
-    echo -e "  ${CYAN}app list${NC}                        List all apps"
-    echo -e "  ${CYAN}app show <user>${NC}                 Show app details"
-    echo -e "  ${CYAN}app edit <user> --php=X.X${NC}       Change PHP version for app"
-    echo -e "  ${CYAN}app env <user>${NC}                  Edit .env file for app"
-    echo -e "  ${CYAN}app crontab <user>${NC}              Edit crontab for app"
-    echo -e "  ${CYAN}app password <user>${NC}             Change app SSH password"
-    echo -e "  ${CYAN}app delete <user>${NC}               Delete an app"
-    echo ""
-    echo -e "${BOLD}Domain Management:${NC}"
-    echo -e "  ${CYAN}domain create${NC}                   Create/assign a domain"
-    echo -e "  ${CYAN}domain list${NC}                     List all domains"
-    echo -e "  ${CYAN}domain delete <domain>${NC}          Delete a domain"
-    echo ""
-    echo -e "${BOLD}Database Management:${NC}"
-    echo -e "  ${CYAN}database create${NC}                 Create a new database"
-    echo -e "  ${CYAN}database list${NC}                   List all databases"
-    echo -e "  ${CYAN}database password <name>${NC}        Change database password"
-    echo -e "  ${CYAN}database delete <name>${NC}          Delete a database"
-    echo ""
-    echo -e "${BOLD}PHP Management:${NC}"
-    echo -e "  ${CYAN}php list${NC}                        List installed PHP versions"
-    echo -e "  ${CYAN}php install <version>${NC}           Install PHP version (5.6-8.5)"
-    echo -e "  ${CYAN}php switch <version>${NC}            Switch CLI PHP version"
-    echo ""
-    echo -e "${BOLD}Service Management:${NC}"
-    echo -e "  ${CYAN}service restart <service>${NC}       Restart service (nginx|php|mysql|supervisor|redis)"
-    echo ""
-    echo -e "${BOLD}Webhook Management:${NC}"
-    echo -e "  ${CYAN}webhook show <user>${NC}             Show webhook configuration for app"
-    echo -e "  ${CYAN}webhook regenerate <user>${NC}       Regenerate webhook secret"
-    echo -e "  ${CYAN}webhook logs${NC}                    View webhook logs"
-    echo ""
-    echo -e "${BOLD}Reverb (WebSocket Server):${NC}"
-    echo -e "  ${CYAN}reverb setup${NC}                    Set up dedicated Reverb WebSocket server"
-    echo -e "  ${CYAN}reverb show${NC}                     Show Reverb server configuration"
-    echo -e "  ${CYAN}reverb start${NC}                    Start Reverb server"
-    echo -e "  ${CYAN}reverb stop${NC}                     Stop Reverb server"
-    echo -e "  ${CYAN}reverb restart${NC}                  Restart Reverb server"
-    echo -e "  ${CYAN}reverb delete${NC}                   Delete Reverb server"
-    echo ""
-    echo -e "${BOLD}System Management:${NC}"
-    echo -e "  ${CYAN}logs [--lines=N]${NC}                View ClamAV antivirus scan logs"
-    echo -e "  ${CYAN}update${NC}                          Update Cipi to latest version"
-    echo ""
-    echo -e "${BOLD}Examples:${NC}"
-    echo -e "  cipi status"
-    echo -e "  cipi provision create --user=myapp --repository=https://github.com/user/repo.git --domain=example.com"
-    echo -e "  cipi provision delete myapp --dbname=mydb"
-    echo -e "  cipi app create --user=myapp --repository=https://github.com/user/repo.git --php=8.4"
-    echo -e "  cipi app edit myapp --php=8.3"
-    echo -e "  cipi app env myapp"
-    echo -e "  cipi app crontab myapp"
-    echo -e "  cipi app password myapp"
-    echo -e "  cipi database create --name=mydb"
-    echo -e "  cipi database password mydb"
-    echo -e "  cipi domain create --domain=example.com --app=myapp"
-    echo -e "  cipi logs --lines=100"
-    echo ""
+    show_help_compact
+}
+
+# Check for --help flag in arguments
+check_help_flag() {
+    for arg in "$@"; do
+        if [ "$arg" = "--help" ] || [ "$arg" = "-h" ] || [ "$arg" = "help" ]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 # Main command router
 main() {
-    # If no command provided, show help
+    # If no command provided, show compact help
     if [ $# -eq 0 ]; then
-        show_help
+        show_help_compact
         exit 0
     fi
 
@@ -157,6 +96,42 @@ main() {
 
     COMMAND=$1
     shift
+
+    # Check if help was requested
+    if [ "$COMMAND" = "help" ] || [ "$COMMAND" = "--help" ] || [ "$COMMAND" = "-h" ]; then
+        # Check for interactive mode
+        if [ "$1" = "-i" ] || [ "$1" = "--interactive" ]; then
+            show_help_interactive
+            exit 0
+        fi
+        # Check if specific command help requested
+        if [ -n "$1" ]; then
+            show_help_command "$1"
+            exit 0
+        fi
+        # Show full help
+        show_help_full
+        exit 0
+    fi
+
+    # Check for --help flag in remaining args (for subcommands)
+    if check_help_flag "$@"; then
+        # Extract command context for help
+        case $COMMAND in
+            provision|app|domain|database|php|service|webhook|reverb)
+                local subcmd="$1"
+                if [ -n "$subcmd" ] && [ "$subcmd" != "--help" ] && [ "$subcmd" != "-h" ]; then
+                    show_help_subcommand "$COMMAND" "$subcmd"
+                else
+                    show_help_command "$COMMAND"
+                fi
+                ;;
+            *)
+                show_help_command "$COMMAND"
+                ;;
+        esac
+        exit 0
+    fi
 
     case $COMMAND in
         status)
@@ -198,13 +173,15 @@ main() {
         update)
             cmd_update "$@"
             ;;
-        help|--help|-h)
-            show_help
-            ;;
         *)
             echo -e "${RED}Unknown command: $COMMAND${NC}"
             echo ""
-            show_help
+            local suggestion=$(suggest_command "$COMMAND")
+            if [ -n "$suggestion" ]; then
+                echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
+                echo ""
+            fi
+            show_help_compact
             exit 1
             ;;
     esac
