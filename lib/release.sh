@@ -26,14 +26,14 @@ DEPLOY_FAILED=0
 
 #############################################
 # Default Hook Implementations
-# Users override these in their deploy.sh
+# Only defined if user hasn't defined them
 #############################################
 
-# Default: do nothing (users override)
-started() { :; }
-linked() { :; }
-activated() { :; }
-finished() { :; }
+# Define defaults only if not already defined by user's deploy.sh
+type started &>/dev/null || started() { :; }
+type linked &>/dev/null || linked() { :; }
+type activated &>/dev/null || activated() { :; }
+type finished &>/dev/null || finished() { :; }
 
 #############################################
 # Helper Functions
@@ -44,19 +44,9 @@ print_step() {
     echo "→ $1"
 }
 
-# Print section header
-print_section() {
-    echo ""
-    echo "─── $1 ───"
-}
-
-# Run a command and track failures
-run_step() {
-    local description="$1"
-    shift
-    print_step "$description"
+# Run a command with output
+run_cmd() {
     if ! "$@" 2>&1; then
-        echo "  ✗ Failed: $description"
         DEPLOY_FAILED=1
         return 1
     fi
@@ -76,7 +66,6 @@ cleanup_failed_release() {
 #############################################
 
 # Validate deployment configuration
-# REPOSITORY and BRANCH should be defined in the user's deploy.sh
 validate_deploy_config() {
     if [ -z "$REPOSITORY" ]; then
         echo "✗ Error: REPOSITORY is not set in deploy.sh"
@@ -91,94 +80,6 @@ validate_deploy_config() {
     return 0
 }
 
-# Step 1: Create release directory
-create_release() {
-    RELEASE_NAME=$(date +%Y%m%d%H%M%S)
-    RELEASE_DIR="$RELEASES_DIR/$RELEASE_NAME"
-    
-    print_section "Create Release Directory"
-    mkdir -p "$RELEASE_DIR"
-    print_step "Created: $RELEASE_DIR"
-}
-
-# Step 2: Clone repository
-clone_repository() {
-    print_section "Clone Repository"
-    run_step "Cloning $BRANCH branch..." git clone -b "$BRANCH" --depth 1 "$REPOSITORY" "$RELEASE_DIR" || {
-        echo "✗ Failed to clone repository"
-        DEPLOY_FAILED=1
-        return 1
-    }
-    
-    cd "$RELEASE_DIR" || return 1
-}
-
-# Step 3: Link shared resources
-link_shared_resources() {
-    print_section "Link Shared Resources"
-    
-    # Remove storage from release (we'll symlink the shared one)
-    if [ -d "$RELEASE_DIR/storage" ]; then
-        rm -rf "$RELEASE_DIR/storage"
-    fi
-    
-    # Symlink shared storage
-    run_step "Linking shared storage..." ln -s "$SHARED_STORAGE" "$RELEASE_DIR/storage" || true
-    
-    # Remove .env from release and symlink shared
-    if [ -f "$RELEASE_DIR/.env" ]; then
-        rm -f "$RELEASE_DIR/.env"
-    fi
-    run_step "Linking shared .env..." ln -s "$SHARED_ENV" "$RELEASE_DIR/.env" || true
-}
-
-# Step 4: Activate release (atomic symlink switch)
-activate_release() {
-    print_section "Activate Release"
-    
-    # Get the current release for reference
-    if [ -L "$CURRENT_LINK" ]; then
-        PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
-    fi
-    
-    # Atomic symlink switch using ln -sfn
-    run_step "Switching to new release..." ln -sfn "$RELEASE_DIR" "$CURRENT_LINK" || {
-        echo "✗ Failed to switch symlink"
-        DEPLOY_FAILED=1
-        return 1
-    }
-    
-    print_step "Active release: $RELEASE_NAME"
-    if [ -n "$PREVIOUS_RELEASE" ]; then
-        print_step "Previous release: $(basename "$PREVIOUS_RELEASE")"
-    fi
-}
-
-# Step 5: Cleanup old releases
-cleanup_old_releases() {
-    print_section "Cleanup Old Releases"
-    
-    cd "$RELEASES_DIR" || return 1
-    
-    # Count releases
-    local release_count=$(ls -1d */ 2>/dev/null | wc -l)
-    print_step "Total releases: $release_count (keeping last $RELEASES_TO_KEEP)"
-    
-    if [ "$release_count" -gt "$RELEASES_TO_KEEP" ]; then
-        # Get releases to delete (oldest first, excluding newest N)
-        local releases_to_delete=$(ls -1d */ | head -n -$RELEASES_TO_KEEP)
-        
-        for release in $releases_to_delete; do
-            local release_path="$RELEASES_DIR/$release"
-            # Don't delete the current release
-            if [ "$release_path" != "$RELEASE_DIR/" ] && [ "$release_path" != "$RELEASE_DIR" ]; then
-                print_step "Removing old release: $release"
-                rm -rf "$RELEASES_DIR/$release"
-            fi
-        done
-    fi
-}
-
 #############################################
 # Main Deployment Runner
 #############################################
@@ -191,65 +92,85 @@ run_deployment() {
     echo "Zero-Downtime Deployment"
     echo "Started at $(date)"
     echo "═══════════════════════════════════════"
+    echo ""
     
     # Set umask for secure permissions
     umask 027
     
-    # Validate configuration (REPOSITORY and BRANCH should be set in deploy.sh)
+    # Validate configuration
     if ! validate_deploy_config; then
         DEPLOY_FAILED=1
         exit 1
     fi
     
     # Step 1: Create release directory
-    create_release
+    RELEASE_NAME=$(date +%Y%m%d%H%M%S)
+    RELEASE_DIR="$RELEASES_DIR/$RELEASE_NAME"
+    mkdir -p "$RELEASE_DIR"
+    print_step "Release: $RELEASE_NAME"
     
     # Step 2: Clone repository
-    if ! clone_repository; then
+    print_step "Cloning $BRANCH branch..."
+    if ! run_cmd git clone -b "$BRANCH" --depth 1 "$REPOSITORY" "$RELEASE_DIR"; then
+        echo "✗ Failed to clone repository"
         exit 1
     fi
     
-    # Hook: started (after clone, before linking)
-    print_section "Hook: started"
     cd "$RELEASE_DIR" || exit 1
+    
+    # Hook: started (after clone, before linking)
     started
     
     # Step 3: Link shared resources
-    link_shared_resources
+    print_step "Linking storage and .env..."
+    [ -d "$RELEASE_DIR/storage" ] && rm -rf "$RELEASE_DIR/storage"
+    ln -s "$SHARED_STORAGE" "$RELEASE_DIR/storage"
+    [ -f "$RELEASE_DIR/.env" ] && rm -f "$RELEASE_DIR/.env"
+    ln -s "$SHARED_ENV" "$RELEASE_DIR/.env"
     
-    # Hook: linked (after symlinks, before activation)
-    # This is where users run composer, npm, migrations, etc.
-    print_section "Hook: linked"
+    # Hook: linked (composer, npm, migrations, etc.)
     cd "$RELEASE_DIR" || exit 1
     linked
     
     # Check if linked hook failed
     if [ $DEPLOY_FAILED -eq 1 ]; then
-        echo ""
-        echo "✗ Deployment failed during 'linked' hook"
+        echo "✗ Deployment failed during build"
         exit 1
     fi
     
     # Fix permissions on bootstrap/cache
-    if [ -d "$RELEASE_DIR/bootstrap/cache" ]; then
-        chmod -R 775 "$RELEASE_DIR/bootstrap/cache" 2>/dev/null || true
+    [ -d "$RELEASE_DIR/bootstrap/cache" ] && chmod -R 775 "$RELEASE_DIR/bootstrap/cache" 2>/dev/null || true
+    
+    # Step 4: Get previous release reference
+    if [ -L "$CURRENT_LINK" ]; then
+        PREVIOUS_RELEASE=$(readlink -f "$CURRENT_LINK")
     fi
     
-    # Step 4: Activate release (atomic symlink switch)
-    if ! activate_release; then
+    # Atomic symlink switch
+    print_step "Activating release..."
+    if ! ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"; then
+        echo "✗ Failed to switch symlink"
+        DEPLOY_FAILED=1
         exit 1
     fi
     
-    # Hook: activated (after symlink switch, app is live)
-    print_section "Hook: activated"
+    # Hook: activated (queue restart, notifications)
     cd "$CURRENT_LINK" || exit 1
     activated
     
     # Step 5: Cleanup old releases
-    cleanup_old_releases
+    cd "$RELEASES_DIR" || exit 1
+    local release_count=$(ls -1d */ 2>/dev/null | wc -l)
     
-    # Hook: finished (final cleanup)
-    print_section "Hook: finished"
+    if [ "$release_count" -gt "$RELEASES_TO_KEEP" ]; then
+        local releases_to_delete=$(ls -1d */ | head -n -$RELEASES_TO_KEEP)
+        for release in $releases_to_delete; do
+            [ "$RELEASES_DIR/$release" != "$RELEASE_DIR/" ] && rm -rf "$RELEASES_DIR/$release"
+        done
+        print_step "Cleaned up old releases (kept last $RELEASES_TO_KEEP)"
+    fi
+    
+    # Hook: finished (monitoring pings, cleanup)
     cd "$CURRENT_LINK" || exit 1
     finished
     
@@ -258,15 +179,14 @@ run_deployment() {
     echo "═══════════════════════════════════════"
     if [ $DEPLOY_FAILED -eq 1 ]; then
         echo "Deployment completed with errors"
-        echo "Finished at $(date)"
-        echo "═══════════════════════════════════════"
-        exit 1
     else
         echo "✓ Deployment successful!"
         echo "Release: $RELEASE_NAME"
-        echo "Finished at $(date)"
-        echo "═══════════════════════════════════════"
     fi
+    echo "Finished at $(date)"
+    echo "═══════════════════════════════════════"
+    
+    [ $DEPLOY_FAILED -eq 1 ] && exit 1
 }
 
 #############################################
@@ -279,4 +199,3 @@ fail_deployment() {
     echo "✗ $message"
     DEPLOY_FAILED=1
 }
-
