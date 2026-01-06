@@ -509,6 +509,22 @@ update_env_file() {
         fi
     }
     
+    # Update app settings (always production)
+    set_env_var "$env_file" "APP_NAME" "$username"
+    set_env_var "$env_file" "APP_ENV" "production"
+    set_env_var "$env_file" "APP_DEBUG" "false"
+    echo "  → Set APP_NAME=$username, APP_ENV=production, APP_DEBUG=false"
+    
+    # Generate APP_KEY
+    local app_key="base64:$(openssl rand -base64 32)"
+    set_env_var "$env_file" "APP_KEY" "$app_key"
+    echo "  → Generated application key"
+    
+    if [ "$skip_domain" = false ] && [ -n "$domain" ]; then
+        set_env_var "$env_file" "APP_URL" "https://${domain}"
+        echo "  → Updated APP_URL in .env"
+    fi
+    
     # Update database settings
     if [ -n "$dbname" ] && [ -n "$db_username" ]; then
         set_env_var "$env_file" "DB_CONNECTION" "mysql"
@@ -522,17 +538,7 @@ update_env_file() {
         fi
         echo "  → Updated database settings in .env"
     fi
-    
-    # Update app settings (always production)
-    set_env_var "$env_file" "APP_ENV" "production"
-    set_env_var "$env_file" "APP_DEBUG" "false"
-    echo "  → Set APP_ENV=production, APP_DEBUG=false"
-    
-    if [ "$skip_domain" = false ] && [ -n "$domain" ]; then
-        set_env_var "$env_file" "APP_URL" "https://${domain}"
-        echo "  → Updated APP_URL in .env"
-    fi
-    
+
     # Configure Redis if available
     if systemctl is-active --quiet redis-server 2>/dev/null; then
         set_env_var "$env_file" "CACHE_DRIVER" "redis"
