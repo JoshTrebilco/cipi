@@ -36,8 +36,6 @@ create_deploy_script() {
 #   \$RELEASE_NAME - Timestamp of the release (e.g., 20260106123456)
 #
 # Available functions:
-#   is_laravel    - Returns true if Laravel project detected
-#   artisan       - Shortcut for 'php artisan'
 #   fail_deployment "message" - Mark deployment as failed
 #############################################
 
@@ -54,37 +52,32 @@ started() {
 # After storage/.env linked, before activation
 # Use for: composer, npm, migrations, caching
 linked() {
-    # Laravel deployment steps
-    if is_laravel; then
-        # Install PHP dependencies
-        composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-        
-        # Install and build frontend assets
-        if [ -f "package.json" ]; then
-            npm ci
-            if grep -q '"build"' package.json; then
-                npm run build
-            fi
+    # Install PHP dependencies
+    composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+    
+    # Install and build frontend assets
+    if [ -f "package.json" ]; then
+        npm ci
+        if grep -q '"build"' package.json; then
+            npm run build
         fi
-        
-        # Run database migrations
-        artisan migrate --force
-        
-        # Optimize for production
-        artisan config:cache
-        artisan route:cache
-        artisan view:cache
-        artisan event:cache
     fi
+    
+    # Run database migrations
+    php artisan migrate --force
+    
+    # Optimize for production
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    php artisan event:cache
 }
 
 # After symlink switch (app is live)
 # Use for: queue restart, notifications, health checks
 activated() {
-    if is_laravel; then
-        # Restart queue workers to pick up new code
-        artisan queue:restart
-    fi
+    # Restart queue workers to pick up new code
+    php artisan queue:restart
 }
 
 # Final cleanup

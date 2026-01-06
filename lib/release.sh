@@ -273,16 +273,6 @@ run_deployment() {
 # Utility Functions (can be used in hooks)
 #############################################
 
-# Check if current project is Laravel
-is_laravel() {
-    [ -f "$RELEASE_DIR/artisan" ] || [ -f "$CURRENT_LINK/artisan" ]
-}
-
-# Run artisan command in release directory
-artisan() {
-    php artisan "$@"
-}
-
 # Mark deployment as failed (can be called from hooks)
 fail_deployment() {
     local message="${1:-Deployment failed}"
