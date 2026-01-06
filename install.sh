@@ -578,8 +578,8 @@ echo "ClamAV Scan Report - $(date)" >> "$SCAN_LOG"
 echo "================================================" >> "$SCAN_LOG"
 echo "" >> "$SCAN_LOG"
 
-# Scan all app directories
-for app_dir in /home/*/wwwroot; do
+# Scan all app directories (uses 'current' symlink for zero-downtime deployments)
+for app_dir in /home/*/current; do
     if [ -d "$app_dir" ]; then
         username=$(basename $(dirname "$app_dir"))
         echo "Scanning: $username ($app_dir)" >> "$SCAN_LOG"
@@ -588,7 +588,7 @@ for app_dir in /home/*/wwwroot; do
         clamscan -r "$app_dir" \
             --exclude-dir="$app_dir/vendor" \
             --exclude-dir="$app_dir/node_modules" \
-            --exclude-dir="$app_dir/storage/framework" \
+            --exclude-dir="$app_dir/storage" \
             --infected \
             --log="$REPORT_LOG" \
             2>&1 | grep -E "Infected files:|FOUND" >> "$SCAN_LOG"
