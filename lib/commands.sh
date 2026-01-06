@@ -120,6 +120,12 @@ cmd_app() {
         delete)
             app_delete "$@"
             ;;
+        rollback)
+            app_rollback "$@"
+            ;;
+        releases)
+            app_releases "$@"
+            ;;
         *)
             echo -e "${RED}Unknown app command: $subcmd${NC}"
             local suggestion=$(suggest_command "$subcmd")
@@ -127,7 +133,7 @@ cmd_app() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi app {create|list|show|edit|env|crontab|password|delete}"
+            echo "Usage: cipi app {create|list|show|edit|env|crontab|password|delete|rollback|releases}"
             echo "Run 'cipi app --help' for more information"
             exit 1
             ;;

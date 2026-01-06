@@ -115,14 +115,21 @@ app_create() {
         exit 1
     fi
     
-    # Create directory structure
+    # Create directory structure (Envoyer-style zero-downtime deployment)
     echo "  → Creating directory structure..."
     local home_dir="/home/$username"
-    mkdir -p "$home_dir"/{wwwroot,logs,.ssh}
+    local release_name=$(date +%Y%m%d%H%M%S)
+    local release_dir="$home_dir/releases/$release_name"
+    
+    mkdir -p "$home_dir"/{releases,logs,.ssh}
+    mkdir -p "$home_dir/storage"/{app,framework,logs}
+    mkdir -p "$home_dir/storage/framework"/{cache,sessions,views}
+    
     chown -R "$username:$username" "$home_dir"
-    chmod 755 "$home_dir"  # Allow traversal (needed for nginx to reach wwwroot)
+    chmod 755 "$home_dir"  # Allow traversal (needed for nginx to reach current)
     chmod 755 "$home_dir/logs"  # Logs readable by web server if needed
     chmod 700 "$home_dir/.ssh"  # SSH keys only for owner
+    chmod -R 775 "$home_dir/storage"  # Shared storage needs to be writable
     
     # Generate SSH key pair for Git
     echo "  → Generating SSH key pair for Git..."
@@ -153,9 +160,9 @@ app_create() {
         fi
     fi
     
-    # Clone repository
+    # Clone repository into first release
     echo "  → Cloning repository..."
-    sudo -u "$username" git clone -b "$branch" "$clone_url" "$home_dir/wwwroot" 2>/dev/null
+    sudo -u "$username" git clone -b "$branch" --depth 1 "$clone_url" "$release_dir" 2>/dev/null
     if [ $? -ne 0 ]; then
         echo -e "${RED}Error: Failed to clone repository${NC}"
         echo -e "${YELLOW}If this is a private repository, ensure the deploy key was added correctly.${NC}"
@@ -166,9 +173,43 @@ app_create() {
     
     # Set web-accessible permissions (group-based access for nginx)
     echo "  → Setting web permissions..."
-    chown -R "$username:$username" "$home_dir/wwwroot"
-    find "$home_dir/wwwroot" -type d -exec chmod 750 {} \;
-    find "$home_dir/wwwroot" -type f -exec chmod 640 {} \;
+    chown -R "$username:$username" "$release_dir"
+    find "$release_dir" -type d -exec chmod 750 {} \;
+    find "$release_dir" -type f -exec chmod 640 {} \;
+    
+    # Setup shared resources symlinks
+    echo "  → Setting up shared resources..."
+    
+    # Remove storage from release and symlink to shared storage
+    if [ -d "$release_dir/storage" ]; then
+        # Copy initial storage structure to shared storage if needed
+        if [ ! -d "$home_dir/storage/app/public" ]; then
+            cp -r "$release_dir/storage/app/public" "$home_dir/storage/app/" 2>/dev/null || true
+        fi
+        rm -rf "$release_dir/storage"
+    fi
+    sudo -u "$username" ln -s "$home_dir/storage" "$release_dir/storage"
+    
+    # Create shared .env from .env.example if it exists
+    if [ ! -f "$home_dir/.env" ]; then
+        if [ -f "$release_dir/.env.example" ]; then
+            cp "$release_dir/.env.example" "$home_dir/.env"
+            chown "$username:$username" "$home_dir/.env"
+            chmod 640 "$home_dir/.env"
+        else
+            touch "$home_dir/.env"
+            chown "$username:$username" "$home_dir/.env"
+            chmod 640 "$home_dir/.env"
+        fi
+    fi
+    
+    # Remove .env from release and symlink to shared .env
+    rm -f "$release_dir/.env" 2>/dev/null || true
+    sudo -u "$username" ln -s "$home_dir/.env" "$release_dir/.env"
+    
+    # Create current symlink pointing to first release
+    echo "  → Activating release..."
+    sudo -u "$username" ln -sfn "$release_dir" "$home_dir/current"
     
     # Create PHP-FPM pool
     echo "  → Creating PHP-FPM pool..."
@@ -202,21 +243,19 @@ app_create() {
     setup_log_rotation "$username"
     
     # Ensure web permissions are maintained
-    find "$home_dir/wwwroot" -type d -exec chmod 750 {} \;
-    find "$home_dir/wwwroot" -type f -exec chmod 640 {} \;
+    find "$home_dir/current" -type d -exec chmod 750 {} \; 2>/dev/null || true
+    find "$home_dir/current" -type f -exec chmod 640 {} \; 2>/dev/null || true
     
-    # Laravel storage and cache need to be writable by app user
-    if [ -d "$home_dir/wwwroot/storage" ]; then
-        chmod -R 775 "$home_dir/wwwroot/storage"
-        chgrp -R "$username" "$home_dir/wwwroot/storage"
+    # Laravel bootstrap/cache needs to be writable by app user
+    if [ -d "$home_dir/current/bootstrap/cache" ]; then
+        chmod -R 775 "$home_dir/current/bootstrap/cache"
+        chgrp -R "$username" "$home_dir/current/bootstrap/cache"
     fi
-    if [ -d "$home_dir/wwwroot/bootstrap/cache" ]; then
-        chmod -R 775 "$home_dir/wwwroot/bootstrap/cache"
-        chgrp -R "$username" "$home_dir/wwwroot/bootstrap/cache"
-    fi
+    
+    # Shared storage is already writable (set up earlier)
     
     # Configure Reverb client (if Reverb is set up and not skipped)
-    if [ "$skip_reverb" = false ] && reverb_is_configured && [ -f "$home_dir/wwwroot/artisan" ]; then
+    if [ "$skip_reverb" = false ] && reverb_is_configured && [ -f "$home_dir/current/artisan" ]; then
         echo "  → Configuring Reverb client..."
         configure_app_for_reverb "$username"
     fi
@@ -338,6 +377,16 @@ app_show() {
     local domain=$(get_domain_by_app "$username")
     local disk_space=$(get_disk_space "$home_dir")
     
+    # Get current release info
+    local current_release=""
+    local release_count=0
+    if [ -L "$home_dir/current" ]; then
+        current_release=$(basename "$(readlink -f "$home_dir/current")")
+    fi
+    if [ -d "$home_dir/releases" ]; then
+        release_count=$(ls -1d "$home_dir/releases"/*/ 2>/dev/null | wc -l)
+    fi
+    
     echo -e "${BOLD}App: $username${NC}"
     echo "─────────────────────────────────────"
     echo -e "Path:       ${CYAN}$home_dir${NC}"
@@ -347,6 +396,13 @@ app_show() {
     echo -e "Branch:     ${CYAN}$branch${NC}"
     echo -e "Domain:     ${CYAN}${domain:-(no domain)}${NC}"
     echo -e "Disk Space: ${CYAN}$disk_space${NC}"
+    echo ""
+    echo -e "${BOLD}Releases:${NC}"
+    echo -e "Current:    ${CYAN}${current_release:-(none)}${NC}"
+    echo -e "Total:      ${CYAN}$release_count${NC}"
+    if [ -d "$home_dir/releases" ] && [ "$release_count" -gt 0 ]; then
+        echo -e "Available:  ${CYAN}$(ls -1d "$home_dir/releases"/*/ 2>/dev/null | xargs -n1 basename | tr '\n' ' ')${NC}"
+    fi
     echo ""
     echo -e "${BOLD}Git SSH Public Key:${NC}"
     if [ -f "$home_dir/gitkey.pub" ]; then
@@ -458,7 +514,8 @@ app_env() {
     check_app_exists "$username"
     
     local home_dir=$(get_app_field "$username" "home_dir")
-    local env_file="$home_dir/wwwroot/.env"
+    # Shared .env is in home directory (not in releases)
+    local env_file="$home_dir/.env"
     
     if [ ! -f "$env_file" ]; then
         echo -e "${YELLOW}Warning: .env file not found at $env_file${NC}"
@@ -466,10 +523,10 @@ app_env() {
         read -p "Do you want to create it from .env.example? (y/N): " create_env
         
         if [ "$create_env" = "y" ] || [ "$create_env" = "Y" ]; then
-            if [ -f "$home_dir/wwwroot/.env.example" ]; then
-                cp "$home_dir/wwwroot/.env.example" "$env_file"
+            if [ -f "$home_dir/current/.env.example" ]; then
+                cp "$home_dir/current/.env.example" "$env_file"
                 chown "$username:$username" "$env_file"
-                chmod 644 "$env_file"
+                chmod 640 "$env_file"
                 echo -e "${GREEN}Created .env from .env.example${NC}"
             else
                 echo -e "${RED}Error: .env.example not found${NC}"
@@ -482,9 +539,10 @@ app_env() {
     
     echo -e "${CYAN}Opening .env editor for: $username${NC}"
     echo -e "File: ${CYAN}$env_file${NC}"
+    echo -e "${YELLOW}Note: This .env is shared across all releases${NC}"
     echo ""
-    echo -e "${YELLOW}Tip: After editing, restart PHP-FPM if needed:${NC}"
-    echo -e "  ${CYAN}cipi service restart php${NC}"
+    echo -e "${YELLOW}Tip: After editing, you may need to clear config cache:${NC}"
+    echo -e "  ${CYAN}cd $home_dir/current && php artisan config:cache${NC}"
     echo ""
     sleep 2
     
@@ -516,8 +574,9 @@ app_crontab() {
     echo -e "${CYAN}Opening crontab editor...${NC}"
     echo ""
     echo -e "${YELLOW}Tip: Add this line for Laravel scheduler:${NC}"
-    echo -e "  ${CYAN}* * * * * cd /home/$username/wwwroot && php artisan schedule:run >> /dev/null 2>&1${NC}"
+    echo -e "  ${CYAN}* * * * * cd /home/$username/current && php artisan schedule:run >> /dev/null 2>&1${NC}"
     echo ""
+    echo -e "${YELLOW}Note: Use 'current' symlink to always run the active release${NC}"
     echo ""
     sleep 3
     
@@ -754,8 +813,9 @@ setup_user_crontab() {
     local home_dir="/home/$username"
     
     # Create crontab for Laravel scheduler (if Laravel detected)
-    if [ -f "$home_dir/wwwroot/artisan" ]; then
-        (crontab -u "$username" -l 2>/dev/null; echo "* * * * * cd $home_dir/wwwroot && php artisan schedule:run >> /dev/null 2>&1") | crontab -u "$username" -
+    # Uses current symlink for zero-downtime deployments
+    if [ -f "$home_dir/current/artisan" ]; then
+        (crontab -u "$username" -l 2>/dev/null; echo "* * * * * cd $home_dir/current && php artisan schedule:run >> /dev/null 2>&1") | crontab -u "$username" -
     fi
 }
 
@@ -778,5 +838,193 @@ $log_dir/*.log {
     endscript
 }
 EOF
+}
+
+# Rollback to previous release
+app_rollback() {
+    local username=$1
+    local target_release=$2
+    
+    if [ -z "$username" ]; then
+        echo -e "${RED}Error: Username required${NC}"
+        echo "Usage: cipi app rollback <username> [release]"
+        exit 1
+    fi
+    
+    check_app_exists "$username"
+    
+    local home_dir=$(get_app_field "$username" "home_dir")
+    local releases_dir="$home_dir/releases"
+    local current_link="$home_dir/current"
+    
+    # Check if releases directory exists
+    if [ ! -d "$releases_dir" ]; then
+        echo -e "${RED}Error: No releases directory found${NC}"
+        exit 1
+    fi
+    
+    # Get list of available releases (sorted oldest first)
+    local releases=($(ls -1d "$releases_dir"/*/ 2>/dev/null | xargs -n1 basename | sort))
+    local release_count=${#releases[@]}
+    
+    if [ "$release_count" -eq 0 ]; then
+        echo -e "${RED}Error: No releases available${NC}"
+        exit 1
+    fi
+    
+    # Get current release
+    local current_release=""
+    if [ -L "$current_link" ]; then
+        current_release=$(basename "$(readlink -f "$current_link")")
+    fi
+    
+    echo -e "${BOLD}Rollback: $username${NC}"
+    echo "─────────────────────────────────────"
+    echo -e "Current release: ${CYAN}$current_release${NC}"
+    echo ""
+    
+    # If no target release specified, show available releases
+    if [ -z "$target_release" ]; then
+        echo -e "${BOLD}Available releases:${NC}"
+        local i=1
+        for release in "${releases[@]}"; do
+            if [ "$release" = "$current_release" ]; then
+                echo -e "  $i. ${GREEN}$release${NC} (current)"
+            else
+                echo -e "  $i. $release"
+            fi
+            ((i++))
+        done
+        echo ""
+        
+        # Find the previous release (one before current)
+        local prev_release=""
+        for ((i=${#releases[@]}-1; i>=0; i--)); do
+            if [ "${releases[$i]}" = "$current_release" ] && [ $i -gt 0 ]; then
+                prev_release="${releases[$((i-1))]}"
+                break
+            fi
+        done
+        
+        if [ -z "$prev_release" ]; then
+            echo -e "${YELLOW}No previous release available to rollback to.${NC}"
+            echo ""
+            read -p "Enter release name to rollback to (or Ctrl+C to cancel): " target_release
+        else
+            read -p "Rollback to $prev_release? (Y/n): " confirm
+            if [ "$confirm" = "n" ] || [ "$confirm" = "N" ]; then
+                read -p "Enter release name to rollback to: " target_release
+            else
+                target_release="$prev_release"
+            fi
+        fi
+    fi
+    
+    # Validate target release exists
+    if [ ! -d "$releases_dir/$target_release" ]; then
+        echo -e "${RED}Error: Release '$target_release' not found${NC}"
+        exit 1
+    fi
+    
+    # Don't rollback to current release
+    if [ "$target_release" = "$current_release" ]; then
+        echo -e "${YELLOW}Already on release $target_release${NC}"
+        exit 0
+    fi
+    
+    echo ""
+    echo -e "${CYAN}Rolling back to: $target_release${NC}"
+    
+    # Atomic symlink switch
+    ln -sfn "$releases_dir/$target_release" "$current_link"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Error: Failed to switch symlink${NC}"
+        exit 1
+    fi
+    
+    # Post-rollback tasks for Laravel
+    if [ -f "$current_link/artisan" ]; then
+        echo "→ Restarting queue workers..."
+        sudo -u "$username" php "$current_link/artisan" queue:restart 2>/dev/null || true
+        
+        echo "→ Clearing config cache..."
+        sudo -u "$username" php "$current_link/artisan" config:cache 2>/dev/null || true
+    fi
+    
+    echo ""
+    echo -e "${GREEN}${BOLD}Rollback successful!${NC}"
+    echo "─────────────────────────────────────"
+    echo -e "Previous: ${CYAN}$current_release${NC}"
+    echo -e "Current:  ${CYAN}$target_release${NC}"
+    echo ""
+}
+
+# List releases for an app
+app_releases() {
+    local username=$1
+    
+    if [ -z "$username" ]; then
+        echo -e "${RED}Error: Username required${NC}"
+        echo "Usage: cipi app releases <username>"
+        exit 1
+    fi
+    
+    check_app_exists "$username"
+    
+    local home_dir=$(get_app_field "$username" "home_dir")
+    local releases_dir="$home_dir/releases"
+    local current_link="$home_dir/current"
+    
+    # Get current release
+    local current_release=""
+    if [ -L "$current_link" ]; then
+        current_release=$(basename "$(readlink -f "$current_link")")
+    fi
+    
+    echo -e "${BOLD}Releases: $username${NC}"
+    echo "─────────────────────────────────────"
+    
+    if [ ! -d "$releases_dir" ]; then
+        echo "No releases directory found."
+        echo ""
+        return
+    fi
+    
+    local releases=($(ls -1d "$releases_dir"/*/ 2>/dev/null | xargs -n1 basename | sort -r))
+    
+    if [ ${#releases[@]} -eq 0 ]; then
+        echo "No releases found."
+        echo ""
+        return
+    fi
+    
+    printf "%-20s %-12s %s\n" "RELEASE" "STATUS" "SIZE"
+    echo "───────────────────────────────────────────"
+    
+    for release in "${releases[@]}"; do
+        local status=""
+        if [ "$release" = "$current_release" ]; then
+            status="${GREEN}active${NC}"
+        else
+            status="available"
+        fi
+        
+        local size=$(du -sh "$releases_dir/$release" 2>/dev/null | awk '{print $1}')
+        
+        if [ "$release" = "$current_release" ]; then
+            echo -e "${GREEN}$release${NC}   $status     $size"
+        else
+            printf "%-20s %-12s %s\n" "$release" "$status" "$size"
+        fi
+    done
+    
+    echo ""
+    echo -e "Total releases: ${CYAN}${#releases[@]}${NC}"
+    echo ""
+    echo -e "${CYAN}Commands:${NC}"
+    echo "  Rollback to previous: cipi app rollback $username"
+    echo "  Rollback to specific: cipi app rollback $username <release>"
+    echo ""
 }
 

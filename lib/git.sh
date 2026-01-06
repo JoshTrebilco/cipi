@@ -76,13 +76,13 @@ SSHCONFIG
 git_configure_ssh() {
     local username=$1
     local home_dir=$2
-    local wwwroot="$home_dir/wwwroot"
+    local current_dir="$home_dir/current"
     
     # Setup SSH config if not already done
     git_setup_ssh_config "$username" "$home_dir"
     
     # Get current remote URL and convert HTTPS to SSH if needed
-    local current_url=$(sudo -u "$username" git -C "$wwwroot" config --get remote.origin.url 2>/dev/null)
+    local current_url=$(sudo -u "$username" git -C "$current_dir" config --get remote.origin.url 2>/dev/null)
     
     if [ -z "$current_url" ]; then
         return 0
@@ -97,7 +97,7 @@ git_configure_ssh() {
     if [[ "$current_url" =~ ^https:// ]]; then
         local ssh_url=$(git_url_to_ssh "$current_url")
         echo "  → Converting Git remote from HTTPS to SSH..."
-        sudo -u "$username" git -C "$wwwroot" remote set-url origin "$ssh_url" 2>/dev/null
+        sudo -u "$username" git -C "$current_dir" remote set-url origin "$ssh_url" 2>/dev/null
         
         if [ $? -eq 0 ]; then
             echo "  → Git remote configured to use SSH"

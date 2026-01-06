@@ -103,7 +103,7 @@ pm.start_servers = 2
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 
-chdir = ${home_dir}/wwwroot
+chdir = ${home_dir}/current
 EOF
     
     systemctl restart "php${version}-fpm"

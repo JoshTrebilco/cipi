@@ -94,7 +94,7 @@ create_nginx_config() {
     local extra_locations=${4:-""}
     
     local server_name="${domain:-$username}"
-    local root_path="/home/$username/wwwroot/public"
+    local root_path="/home/$username/current/public"
     local log_path="/home/$username/logs"
     local php_socket="/var/run/php/php${php_version}-fpm-${username}.sock"
     
@@ -151,7 +151,7 @@ add_ssl_to_nginx() {
     local extra_locations=${4:-""}
     local hide_powered_by=${5:-false}
     
-    local root_path="/home/$username/wwwroot/public"
+    local root_path="/home/$username/current/public"
     local log_path="/home/$username/logs"
     local php_socket="/var/run/php/php${php_version}-fpm-${username}.sock"
     

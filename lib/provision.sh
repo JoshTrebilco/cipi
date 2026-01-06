@@ -267,7 +267,7 @@ provision_create() {
     
     # Get app home directory
     local home_dir=$(get_app_field "$username" "home_dir")
-    local env_file="$home_dir/wwwroot/.env"
+    local env_file="$home_dir/.env"
     
     # Step 2: Create domain
     if [ "$skip_domain" = false ]; then
@@ -313,18 +313,18 @@ provision_create() {
         echo ""
         echo -e "${CYAN}Step ${step}/${total_steps}: Updating .env file...${NC}"
         
-        # Ensure .env exists
+        # Ensure .env exists (shared .env is in home directory)
         if [ ! -f "$env_file" ]; then
-            if [ -f "$home_dir/wwwroot/.env.example" ]; then
-                sudo -u "$username" cp "$home_dir/wwwroot/.env.example" "$env_file"
+            if [ -f "$home_dir/current/.env.example" ]; then
+                sudo -u "$username" cp "$home_dir/current/.env.example" "$env_file"
                 chown "$username:$username" "$env_file"
-                chmod 644 "$env_file"
+                chmod 640 "$env_file"
                 echo "  → Created .env from .env.example"
             else
                 # Create minimal .env file
                 sudo -u "$username" touch "$env_file"
                 chown "$username:$username" "$env_file"
-                chmod 644 "$env_file"
+                chmod 640 "$env_file"
                 echo "  → Created empty .env file"
             fi
         fi

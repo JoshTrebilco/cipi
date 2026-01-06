@@ -8,7 +8,7 @@
 configure_app_for_reverb() {
     local username=$1
     local home_dir="/home/$username"
-    local env_file="$home_dir/wwwroot/.env"
+    local env_file="$home_dir/.env"
     
     if [ ! -f "$env_file" ]; then
         echo -e "  ${YELLOW}Warning: .env file not found, skipping Reverb config${NC}"
@@ -56,7 +56,7 @@ configure_app_for_reverb() {
 create_reverb_supervisor_config() {
     local username=$1
     local home_dir="/home/$username"
-    local project_dir="${home_dir}/wwwroot"
+    local project_dir="${home_dir}/current"
     local log_file="${home_dir}/reverb-worker.log"
     local log_dir="${home_dir}/logs"
     
@@ -101,7 +101,7 @@ supervisor_reload_reverb() {
 validate_reverb_artisan() {
     local username=$1
     local home_dir="/home/$username"
-    local project_dir="${home_dir}/wwwroot"
+    local project_dir="${home_dir}/current"
     local artisan_file="${project_dir}/artisan"
     local vendor_dir="${project_dir}/vendor"
     
@@ -255,7 +255,7 @@ reverb_setup() {
     echo ""
     echo -e "${CYAN}Step 3/6: Configuring Reverb server .env...${NC}"
     
-    local env_file="$home_dir/wwwroot/.env"
+    local env_file="$home_dir/.env"
     
     # Helper to set env var
     set_env_var() {
