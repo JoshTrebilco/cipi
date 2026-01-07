@@ -290,7 +290,11 @@ reverb_setup() {
     
     chown "$username:$username" "$env_file"
     echo "  → Reverb server .env configured"
-    
+
+    # Rebuild config cache to include new env vars
+    echo "  → Rebuilding config cache..."
+    sudo -u "$username" php "${home_dir}/current/artisan" config:cache
+
     echo ""
     echo -e "${CYAN}Step 4/6: Setting production file limits...${NC}"
     set_reverb_file_limits "$username"
