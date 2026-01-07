@@ -164,7 +164,12 @@ declare -A HELP_DESCRIPTION=(
 # Compact help screen (default)
 show_help_compact() {
     show_logo
-    echo -e "Cipi v${CIPI_VERSION} - Server Management CLI"
+    local commit=$(get_version_commit)
+    if [ -n "$commit" ]; then
+        echo -e "Cipi v${CIPI_VERSION} (${commit:0:7}) - Server Management CLI"
+    else
+        echo -e "Cipi v${CIPI_VERSION} - Server Management CLI"
+    fi
     echo ""
     echo -e "${BOLD}COMMANDS:${NC}"
     echo ""

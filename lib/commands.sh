@@ -23,6 +23,12 @@ cmd_status() {
     show_logo
     echo -e "${BOLD}SERVER STATUS${NC}"
     echo "─────────────────────────────────────"
+    local commit=$(get_version_commit)
+    if [ -n "$commit" ]; then
+        echo -e "CIPI:     ${CYAN}v${CIPI_VERSION} (${commit:0:7})${NC}"
+    else
+        echo -e "CIPI:     ${CYAN}v${CIPI_VERSION}${NC}"
+    fi
     echo -e "IP:       ${CYAN}$(get_server_ip)${NC}"
     echo -e "HOSTNAME: ${CYAN}$(get_hostname)${NC}"
     echo -e "CPU:      ${CYAN}$(get_cpu_usage)${NC}"
