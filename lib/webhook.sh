@@ -127,8 +127,11 @@ webhook_delete() {
         exit 1
     fi
     
-    # Delete the webhook
+    # Delete the webhook from GitHub
     github_delete_webhook "$owner_repo" "$access_token" "$webhook_url"
+    
+    # Delete the webhook secret from local storage
+    delete_webhook "$username"
     
     echo ""
 }
