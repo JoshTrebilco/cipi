@@ -762,6 +762,10 @@ app_delete() {
         done
     fi
     
+    # Delete user crontab
+    echo "  → Deleting crontab..."
+    crontab -r -u "$username" 2>/dev/null || true
+    
     # Delete system user and home directory
     echo "  → Deleting system user and files..."
     delete_system_user "$username"
@@ -815,7 +819,10 @@ setup_user_crontab() {
     # Create crontab for Laravel scheduler (if Laravel detected)
     # Uses current symlink for zero-downtime deployments
     if [ -f "$home_dir/current/artisan" ]; then
-        (crontab -u "$username" -l 2>/dev/null; echo "* * * * * cd $home_dir/current && php artisan schedule:run >> /dev/null 2>&1") | crontab -u "$username" -
+        # Only add if schedule:run entry doesn't already exist
+        if ! crontab -u "$username" -l 2>/dev/null | grep -q "schedule:run"; then
+            (crontab -u "$username" -l 2>/dev/null; echo "* * * * * cd $home_dir/current && php artisan schedule:run >> /dev/null 2>&1") | crontab -u "$username" -
+        fi
     fi
 }
 
