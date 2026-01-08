@@ -927,11 +927,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond(405, 'Method not allowed. Use POST.');
 }
 
-// Validate Content-Type header
+// Check Content-Type header (warn but don't reject - GitHub always sends JSON payload)
 $content_type = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
-if (stripos($content_type, 'application/json') === false) {
-    webhook_log("Invalid Content-Type: $content_type", 'WARN');
-    respond(400, 'Content-Type must be application/json');
+if (stripos($content_type, 'application/json') === false && stripos($content_type, 'json') === false) {
+    webhook_log("Unexpected Content-Type: $content_type (continuing anyway)", 'WARN');
 }
 
 // Get username from URL
