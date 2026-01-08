@@ -345,7 +345,7 @@ github_create_webhook() {
             \"events\": [\"push\"],
             \"config\": {
                 \"url\": \"$webhook_url\",
-                \"content_type\": \"application/json\",
+                \"content_type\": \"json\",
                 \"secret\": \"$webhook_secret\",
                 \"insecure_ssl\": \"0\"
             }
