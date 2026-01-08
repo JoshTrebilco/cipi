@@ -176,7 +176,6 @@ github_device_flow_auth() {
     local device_code=$(echo "$device_response" | jq -r '.device_code // empty')
     local user_code=$(echo "$device_response" | jq -r '.user_code // empty')
     local verification_uri=$(echo "$device_response" | jq -r '.verification_uri // empty')
-    local verification_uri_complete=$(echo "$device_response" | jq -r '.verification_uri_complete // empty')
     local interval=$(echo "$device_response" | jq -r '.interval // 5')
     local expires_in=$(echo "$device_response" | jq -r '.expires_in // 900')
     
@@ -190,12 +189,8 @@ github_device_flow_auth() {
     echo "─────────────────────────────────────" >&2
     echo -e "${YELLOW}${BOLD}GitHub Authorization Required${NC}" >&2
     echo "" >&2
-    if [ -n "$verification_uri_complete" ] && [ "$verification_uri_complete" != "null" ]; then
-        echo -e "  Open: ${CYAN}${BOLD}$verification_uri_complete${NC}" >&2
-    else
-        echo -e "  1. Open: ${CYAN}${BOLD}$verification_uri${NC}" >&2
-        echo -e "  2. Enter code: ${GREEN}${BOLD}$user_code${NC}" >&2
-    fi
+    echo -e "  1. Open: ${CYAN}${BOLD}$verification_uri${NC}" >&2
+    echo -e "  2. Enter code: ${GREEN}${BOLD}$user_code${NC}" >&2
     echo "" >&2
     echo "Waiting for authorization..." >&2
     echo "─────────────────────────────────────" >&2
