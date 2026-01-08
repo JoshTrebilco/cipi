@@ -1042,9 +1042,11 @@ WEBHOOKPHP
         chown root:root /etc/cipi/webhooks.json
     fi
     
-    # Create webhook log directory
+    # Create webhook log directory and file with proper permissions
     mkdir -p /var/log/cipi
-    chmod 755 /var/log/cipi
+    touch /var/log/cipi/webhook.log
+    chown www-data:www-data /var/log/cipi/webhook.log
+    chmod 644 /var/log/cipi/webhook.log
     
     # Allow www-data to run bash as any user (needed for deploy.sh execution)
     echo 'www-data ALL=(ALL) NOPASSWD: /usr/bin/bash' > /etc/sudoers.d/cipi-webhook
