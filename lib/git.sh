@@ -173,6 +173,9 @@ github_device_flow_auth() {
         -H "Accept: application/json" \
         -d "client_id=$github_client_id&scope=$scope")
     
+    # DEBUG: See what GitHub returns
+    echo "DEBUG device_response: $device_response" >&2
+    
     local device_code=$(echo "$device_response" | jq -r '.device_code // empty')
     local user_code=$(echo "$device_response" | jq -r '.user_code // empty')
     local verification_uri=$(echo "$device_response" | jq -r '.verification_uri // empty')
