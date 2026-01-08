@@ -120,7 +120,7 @@ webhook_delete() {
     echo ""
     
     # Get access token via device flow
-    local access_token=$(github_device_flow "admin:repo_hook")
+    local access_token=$(github_device_flow_auth "admin:repo_hook")
     
     if [ -z "$access_token" ]; then
         echo -e "${RED}Error: Failed to get GitHub access token${NC}"
