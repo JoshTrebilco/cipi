@@ -1040,8 +1040,9 @@ WEBHOOKPHP
     # Initialize webhooks storage
     if [ ! -f "/etc/cipi/webhooks.json" ]; then
         echo "{}" > /etc/cipi/webhooks.json
-        chmod 600 /etc/cipi/webhooks.json
-        chown root:root /etc/cipi/webhooks.json
+        # 640 with www-data group so PHP can read secrets
+        chmod 640 /etc/cipi/webhooks.json
+        chown root:www-data /etc/cipi/webhooks.json
     fi
     
     # Create webhook log directory and file with proper permissions
