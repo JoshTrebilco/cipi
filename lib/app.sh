@@ -1013,7 +1013,7 @@ app_releases() {
         local size=$(du -sh "$releases_dir/$release" 2>/dev/null | awk '{print $1}')
         
         if [ "$release" = "$current_release" ]; then
-            echo -e "${GREEN}$release${NC}   $status     $size"
+            printf "${GREEN}%-20s${NC} ${GREEN}%-12s${NC} %s\n" "$release" "active" "$size"
         else
             printf "%-20s %-12s %s\n" "$release" "$status" "$size"
         fi
