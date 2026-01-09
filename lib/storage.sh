@@ -122,7 +122,7 @@ set_config() {
 }
 
 #############################################
-# Provision Helpers
+# Stack Helpers
 #############################################
 
 # Generate unique username

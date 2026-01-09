@@ -225,12 +225,12 @@ reverb_create() {
     fi
     
     echo ""
-    echo -e "${CYAN}Step 1/7: Provisioning Reverb app...${NC}"
+    echo -e "${CYAN}Step 1/7: Creating Reverb app...${NC}"
     
-    # Provision the app (skip database, reverb client config, and deploy)
+    # Create the app stack (skip database, reverb client config, and deploy)
     # Deploy is deferred until after .env is configured with VITE_* vars
-    # Domain + SSL will be set up automatically by provision_create
-    provision_create \
+    # Domain + SSL will be set up automatically by stack_create
+    stack_create \
         --user="$username" \
         --repository="$repository" \
         --domain="$domain" \
@@ -324,7 +324,7 @@ reverb_create() {
     echo ""
     echo -e "${CYAN}Step 6/7: Adding WebSocket proxy to nginx...${NC}"
     
-    # Domain + SSL are already set up by provision_create
+    # Domain + SSL are already set up by stack_create
     # Regenerate SSL config with websocket proxy included
     if ! add_websocket_proxy_to_nginx "$username" "$domain" "$php_version" 8080; then
         echo -e "${RED}Error: Failed to add WebSocket proxy to nginx${NC}"
@@ -541,7 +541,7 @@ reverb_delete() {
     supervisor_reload_reverb
     
     echo -e "${CYAN}Deleting Reverb app...${NC}"
-    provision_delete "$username" --force
+    stack_delete "$username" --force
     
     echo -e "${CYAN}Removing reverb.json...${NC}"
     rm -f "${REVERB_FILE}"

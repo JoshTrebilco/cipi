@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #############################################
-# Provision Functions - Full App Creation
+# Stack Functions - Full App Creation
 #############################################
 
-# Provision create - full app creation (app + domain + database + .env + SSL + deploy)
-provision_create() {
+# Stack create - full app creation (app + domain + database + .env + SSL + deploy)
+stack_create() {
     local username=""
     local repository=""
     local branch=""
@@ -79,7 +79,7 @@ provision_create() {
     
     # Interactive prompts
     if [ $interactive = true ]; then
-        echo -e "${BOLD}Provision New App${NC}"
+        echo -e "${BOLD}Create New Stack${NC}"
         echo "─────────────────────────────────────"
         echo ""
         
@@ -192,7 +192,7 @@ provision_create() {
     if [ -z "$username" ] || [ -z "$repository" ]; then
         echo -e "${RED}Error: Username and repository are required${NC}"
         echo ""
-        echo "Usage: cipi provision create [options]"
+        echo "Usage: cipi stack create [options]"
         echo ""
         echo "Run without arguments for interactive mode, or provide options:"
         echo ""
@@ -222,7 +222,7 @@ provision_create() {
         exit 1
     fi
     
-    echo -e "${BOLD}Provision App${NC}"
+    echo -e "${BOLD}Create Stack${NC}"
     echo "─────────────────────────────────────"
     echo -e "User:       ${CYAN}$username${NC}"
     echo -e "Repository: ${CYAN}$repository${NC}"
@@ -365,7 +365,7 @@ provision_create() {
     
     # Display summary
     echo ""
-    echo -e "${GREEN}${BOLD}Provision completed successfully!${NC}"
+    echo -e "${GREEN}${BOLD}Stack created successfully!${NC}"
     echo "─────────────────────────────────────"
     echo ""
     echo -e "${BOLD}App Credentials${NC}"
@@ -406,8 +406,8 @@ provision_create() {
     echo ""
 }
 
-# Provision delete - delete app and optionally database
-provision_delete() {
+# Stack delete - delete app and optionally database
+stack_delete() {
     local username=""
     local dbname=""
     local force=false
@@ -433,7 +433,7 @@ provision_delete() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi provision delete <username> [--dbname=DBNAME] [--force]"
+        echo "Usage: cipi stack delete <username> [--dbname=DBNAME] [--force]"
         exit 1
     fi
     
@@ -480,7 +480,7 @@ provision_delete() {
     fi
     
     # Show what will be deleted
-    echo -e "${BOLD}Provision Delete${NC}"
+    echo -e "${BOLD}Delete Stack${NC}"
     echo "─────────────────────────────────────"
     echo -e "The following resources will be deleted:"
     echo -e "  • App: ${CYAN}$username${NC}"
@@ -503,7 +503,7 @@ provision_delete() {
     fi
     
     echo ""
-    echo -e "${GREEN}${BOLD}Provision deleted successfully!${NC}"
+    echo -e "${GREEN}${BOLD}Stack deleted successfully!${NC}"
     echo ""
 }
 
@@ -584,4 +584,3 @@ update_env_file() {
     chown "$username:$username" "$env_file"
     chmod 644 "$env_file"
 }
-

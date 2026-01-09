@@ -48,7 +48,7 @@ levenshtein_distance() {
 # Suggest closest command match
 suggest_command() {
     local input="$1"
-    local commands=("status" "provision" "app" "domain" "database" "php" "service" "webhook" "reverb" "deploy" "update" "help" "logs" "version")
+    local commands=("status" "stack" "app" "domain" "database" "php" "service" "webhook" "reverb" "deploy" "update" "help" "logs" "version")
     local best_match=""
     local min_distance=999
     local distance
@@ -68,9 +68,9 @@ suggest_command() {
 declare -A HELP_SYNOPSIS=(
     ["status"]="cipi status"
     ["version"]="cipi version"
-    ["provision"]="cipi provision <command> [options]"
-    ["provision:create"]="cipi provision create [options]"
-    ["provision:delete"]="cipi provision delete <user> [options]"
+    ["stack"]="cipi stack <command> [options]"
+    ["stack:create"]="cipi stack create [options]"
+    ["stack:delete"]="cipi stack delete <user> [options]"
     ["app"]="cipi app <command> [options]"
     ["app:create"]="cipi app create [options]"
     ["app:list"]="cipi app list"
@@ -118,9 +118,9 @@ declare -A HELP_SYNOPSIS=(
 declare -A HELP_DESCRIPTION=(
     ["status"]="Show server status and service information"
     ["version"]="Show Cipi version and commit information"
-    ["provision"]="Quick setup wizard: create app, domain, database, SSL, and configure .env"
-    ["provision:create"]="Create a complete application setup (app + domain + database + SSL + .env)"
-    ["provision:delete"]="Delete an app and optionally its database"
+    ["stack"]="Full stack creation: app + domain + database + SSL + .env"
+    ["stack:create"]="Create a complete application stack (app + domain + database + SSL + .env)"
+    ["stack:delete"]="Delete a stack and optionally its database"
     ["app"]="Manage applications"
     ["app:create"]="Create a new application"
     ["app:list"]="List all applications"
@@ -178,7 +178,7 @@ show_help_compact() {
     echo -e "${BOLD}COMMANDS:${NC}"
     echo ""
     echo -e "  ${CYAN}status${NC}      Show server status"
-    echo -e "  ${CYAN}provision${NC}   Quick setup: app + domain + database + SSL"
+    echo -e "  ${CYAN}stack${NC}       Full stack: app + domain + database + SSL"
     echo -e "  ${CYAN}app${NC}         Manage applications"
     echo -e "  ${CYAN}domain${NC}       Manage domains"
     echo -e "  ${CYAN}database${NC}    Manage databases"
@@ -206,9 +206,9 @@ show_help_full() {
     echo -e "  ${CYAN}status${NC}                          Show server status"
     echo -e "  ${CYAN}version${NC}                         Show Cipi version"
     echo ""
-    echo -e "${BOLD}Provision (Quick Setup):${NC}"
-    echo -e "  ${CYAN}provision create${NC}                Create app, domain, database, SSL, and configure .env"
-    echo -e "  ${CYAN}provision delete <user>${NC}         Delete app and optionally database"
+    echo -e "${BOLD}Stack (Full Stack Creation):${NC}"
+    echo -e "  ${CYAN}stack create${NC}                    Create app, domain, database, SSL, and configure .env"
+    echo -e "  ${CYAN}stack delete <user>${NC}             Delete stack and optionally database"
     echo ""
     echo -e "${BOLD}App Management:${NC}"
     echo -e "  ${CYAN}app create${NC}                      Create a new app"
@@ -265,8 +265,8 @@ show_help_full() {
     echo ""
     echo -e "${BOLD}Examples:${NC}"
     echo -e "  cipi status"
-    echo -e "  cipi provision create --user=myapp --repository=https://github.com/user/repo.git --domain=example.com"
-    echo -e "  cipi provision delete myapp --dbname=mydb"
+    echo -e "  cipi stack create --user=myapp --repository=https://github.com/user/repo.git --domain=example.com"
+    echo -e "  cipi stack delete myapp --dbname=mydb"
     echo -e "  cipi app create --user=myapp --repository=https://github.com/user/repo.git --php=8.4"
     echo -e "  cipi app edit myapp --php=8.3"
     echo -e "  cipi app env myapp"
@@ -305,17 +305,17 @@ show_help_command() {
             echo -e "  Displays the current Cipi version and commit hash (if available)."
             echo ""
             ;;
-        provision)
-            echo -e "${BOLD}PROVISION${NC} - Quick Setup Wizard"
+        stack)
+            echo -e "${BOLD}STACK${NC} - Full Stack Creation"
             echo ""
             echo -e "${BOLD}USAGE:${NC}"
-            echo -e "  ${CYAN}cipi provision <command> [options]${NC}"
+            echo -e "  ${CYAN}cipi stack <command> [options]${NC}"
             echo ""
             echo -e "${BOLD}COMMANDS:${NC}"
             echo -e "  ${CYAN}create${NC}    Create app, domain, database, SSL, and configure .env"
-            echo -e "  ${CYAN}delete${NC}     Delete app and optionally database"
+            echo -e "  ${CYAN}delete${NC}    Delete stack and optionally database"
             echo ""
-            echo -e "Run ${CYAN}cipi provision <command> --help${NC} for command options"
+            echo -e "Run ${CYAN}cipi stack <command> --help${NC} for command options"
             echo ""
             ;;
         app)
@@ -497,11 +497,11 @@ show_help_subcommand() {
     local subcmd="$2"
     
     case "$cmd:$subcmd" in
-        provision:create)
-            echo -e "${BOLD}PROVISION CREATE${NC} - Complete Application Setup"
+        stack:create)
+            echo -e "${BOLD}STACK CREATE${NC} - Create Full Application Stack"
             echo ""
             echo -e "${BOLD}USAGE:${NC}"
-            echo -e "  ${CYAN}cipi provision create [options]${NC}"
+            echo -e "  ${CYAN}cipi stack create [options]${NC}"
             echo ""
             echo -e "${BOLD}REQUIRED:${NC}"
             echo -e "  ${CYAN}--user=<name>${NC}         System username (lowercase, alphanumeric)"
@@ -513,22 +513,22 @@ show_help_subcommand() {
             echo -e "  ${CYAN}--domain=<domain>${NC}     Domain name"
             echo -e "  ${CYAN}--dbname=<name>${NC}        Database name"
             echo -e "  ${CYAN}--skip-db${NC}              Skip database creation"
-            echo -e "  ${CYAN}--skip-domain${NC}          Skip domain setup"
+            echo -e "  ${CYAN}--skip-domain${NC}          Skip domain creation"
             echo -e "  ${CYAN}--skip-env${NC}              Skip .env configuration"
             echo -e "  ${CYAN}--skip-deploy${NC}           Skip initial deployment"
             echo -e "  ${CYAN}--skip-reverb${NC}           Skip Reverb connection"
             echo ""
             echo -e "${BOLD}EXAMPLES:${NC}"
-            echo -e "  cipi provision create"
-            echo -e "  cipi provision create --user=mysite --repository=https://github.com/user/repo.git --domain=example.com"
-            echo -e "  cipi provision create --user=mysite --repository=git@github.com:user/repo.git --php=8.3 --branch=develop"
+            echo -e "  cipi stack create"
+            echo -e "  cipi stack create --user=mysite --repository=https://github.com/user/repo.git --domain=example.com"
+            echo -e "  cipi stack create --user=mysite --repository=git@github.com:user/repo.git --php=8.3 --branch=develop"
             echo ""
             ;;
-        provision:delete)
-            echo -e "${BOLD}PROVISION DELETE${NC} - Delete Application"
+        stack:delete)
+            echo -e "${BOLD}STACK DELETE${NC} - Delete Application Stack"
             echo ""
             echo -e "${BOLD}USAGE:${NC}"
-            echo -e "  ${CYAN}cipi provision delete <user> [options]${NC}"
+            echo -e "  ${CYAN}cipi stack delete <user> [options]${NC}"
             echo ""
             echo -e "${BOLD}ARGUMENTS:${NC}"
             echo -e "  ${CYAN}<user>${NC}                 Application username"
@@ -537,8 +537,8 @@ show_help_subcommand() {
             echo -e "  ${CYAN}--dbname=<name>${NC}        Database name to delete"
             echo ""
             echo -e "${BOLD}EXAMPLES:${NC}"
-            echo -e "  cipi provision delete myapp"
-            echo -e "  cipi provision delete myapp --dbname=mydb"
+            echo -e "  cipi stack delete myapp"
+            echo -e "  cipi stack delete myapp --dbname=mydb"
             echo ""
             ;;
         app:create)
@@ -982,7 +982,7 @@ show_help_subcommand() {
 show_help_interactive() {
     local commands=(
         "status:Show server status"
-        "provision:Quick setup wizard"
+        "stack:Full stack creation"
         "app:Manage applications"
         "domain:Manage domains"
         "database:Manage databases"

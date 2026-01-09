@@ -304,11 +304,11 @@ cmd_service() {
     service_restart "$@"
 }
 
-# Provision commands
-cmd_provision() {
+# Stack commands
+cmd_stack() {
     # Check for --help before subcommand
     if [ -z "$1" ] || check_help_requested "$@"; then
-        show_help_command "provision"
+        show_help_command "stack"
         exit 0
     fi
     
@@ -317,26 +317,26 @@ cmd_provision() {
     
     # Check for --help after subcommand
     if check_help_requested "$@"; then
-        show_help_subcommand "provision" "$subcmd"
+        show_help_subcommand "stack" "$subcmd"
         exit 0
     fi
     
     case $subcmd in
         create)
-            provision_create "$@"
+            stack_create "$@"
             ;;
         delete)
-            provision_delete "$@"
+            stack_delete "$@"
             ;;
         *)
-            echo -e "${RED}Unknown provision command: $subcmd${NC}"
+            echo -e "${RED}Unknown stack command: $subcmd${NC}"
             local suggestion=$(suggest_command "$subcmd")
             if [ -n "$suggestion" ]; then
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi provision {create|delete}"
-            echo "Run 'cipi provision --help' for more information"
+            echo "Usage: cipi stack {create|delete}"
+            echo "Run 'cipi stack --help' for more information"
             exit 1
             ;;
     esac
