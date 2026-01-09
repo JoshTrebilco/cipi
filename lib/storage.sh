@@ -137,9 +137,16 @@ generate_username() {
 }
 
 # Generate secure password
+# Excludes characters that are problematic in .env files:
+# - # (comment character)
+# - $ (variable substitution)
+# - " and ' (quotes)
+# - ` (backtick)
+# - \ (escape character)
+# - spaces and whitespace
 generate_password() {
     local length=${1:-24}
-    tr -dc 'A-Za-z0-9!@#$%^&*()_+{}|:<>?=' < /dev/urandom | head -c "$length"
+    tr -dc 'A-Za-z0-9!@%^&*()_+{}|:<>?=-' < /dev/urandom | head -c "$length"
 }
 
 #############################################
