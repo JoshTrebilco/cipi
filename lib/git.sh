@@ -30,9 +30,9 @@ git_url_to_ssh() {
     fi
 }
 
-# Helper: Setup SSH config for git operations (known hosts + config file)
+# Helper: Create SSH config for git operations (known hosts + config file)
 # This should be called before cloning private repos
-git_setup_ssh_config() {
+git_create_ssh_config() {
     local username=$1
     local home_dir=$2
     
@@ -71,15 +71,15 @@ SSHCONFIG
     chmod 600 "$home_dir/.ssh/known_hosts" 2>/dev/null || true
 }
 
-# Helper: Configure Git to use SSH (full setup + remote URL conversion)
+# Helper: Configure Git to use SSH (full creation + remote URL conversion)
 # Call this after cloning to convert remote URL from HTTPS to SSH
 git_configure_ssh() {
     local username=$1
     local home_dir=$2
     local current_dir="$home_dir/current"
     
-    # Setup SSH config if not already done
-    git_setup_ssh_config "$username" "$home_dir"
+    # Create SSH config if not already done
+    git_create_ssh_config "$username" "$home_dir"
     
     # Get current remote URL and convert HTTPS to SSH if needed
     local current_url=$(sudo -u "$username" git -C "$current_dir" config --get remote.origin.url 2>/dev/null)
@@ -259,7 +259,7 @@ github_add_deploy_key() {
     local owner_repo=$(github_parse_repo "$repository")
     
     if [ -z "$owner_repo" ]; then
-        echo -e "  ${YELLOW}⚠ Not a GitHub repository, skipping deploy key setup${NC}"
+        echo -e "  ${YELLOW}⚠ Not a GitHub repository, skipping deploy key creation${NC}"
         return 1
     fi
     
@@ -488,11 +488,11 @@ github_delete_webhook() {
     fi
 }
 
-# Helper: Setup GitHub webhook for an app (full flow: auth + create)
-# This is a convenience function that handles the complete webhook setup
-# Usage: github_setup_webhook "repository_url" "webhook_url" "webhook_secret"
+# Helper: Create GitHub webhook for an app (full flow: auth + create)
+# This is a convenience function that handles the complete webhook creation
+# Usage: github_create_webhook "repository_url" "webhook_url" "webhook_secret"
 # Returns: 0 on success, 1 on failure
-github_setup_webhook() {
+github_create_webhook() {
     local repository=$1
     local webhook_url=$2
     local webhook_secret=$3
@@ -516,7 +516,7 @@ github_setup_webhook() {
     fi
     
     echo ""
-    echo -e "${CYAN}Setting up GitHub webhook for ${BOLD}$owner_repo${NC}"
+    echo -e "${CYAN}Creating GitHub webhook for ${BOLD}$owner_repo${NC}"
     
     # Get access token via Device Flow OAuth
     local access_token=$(github_device_flow_auth "admin:repo_hook")

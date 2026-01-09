@@ -360,8 +360,8 @@ cmd_webhook() {
     fi
     
     case $subcmd in
-        setup)
-            webhook_setup "$@"
+        create)
+            webhook_create "$@"
             ;;
         show)
             webhook_show "$@"
@@ -382,7 +382,7 @@ cmd_webhook() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi webhook {setup|show|regenerate|delete|logs} <username>"
+            echo "Usage: cipi webhook {create|show|regenerate|delete|logs} <username>"
             echo "Run 'cipi webhook --help' for more information"
             exit 1
             ;;
@@ -407,8 +407,8 @@ cmd_reverb() {
     fi
     
     case $subcmd in
-        setup)
-            reverb_setup "$@"
+        create)
+            reverb_create "$@"
             ;;
         show)
             reverb_show "$@"
@@ -432,7 +432,7 @@ cmd_reverb() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi reverb {setup|show|start|stop|restart|delete}"
+            echo "Usage: cipi reverb {create|show|start|stop|restart|delete}"
             echo "Run 'cipi reverb --help' for more information"
             exit 1
             ;;

@@ -108,7 +108,7 @@ app_create() {
     # Generate password
     local password=$(generate_password 24)
     
-    # Create system user (includes group setup and www-data access)
+    # Create system user (includes group creation and www-data access)
     echo "  → Creating system user..."
     if ! create_system_user "$username" "$password"; then
         echo -e "${RED}Error: Failed to create system user${NC}"
@@ -138,8 +138,8 @@ app_create() {
     chown "$username:$username" "$home_dir/gitkey.pub"
     chmod 644 "$home_dir/gitkey.pub"
     
-    # Setup SSH config and convert URL to SSH format
-    git_setup_ssh_config "$username" "$home_dir"
+    # Create SSH config and convert URL to SSH format
+    git_create_ssh_config "$username" "$home_dir"
     local clone_url=$(git_url_to_ssh "$repository")
     
     echo "  → Adding deploy key for SSH access..."
@@ -221,19 +221,19 @@ app_create() {
     local webhook_secret=$(generate_webhook_secret)
     set_webhook "$username" "$webhook_secret"
     
-    # Setup GitHub webhook automatically if OAuth is configured
+    # Create GitHub webhook automatically if OAuth is configured
     local github_client_id=$(get_config "github_client_id")
-    local webhook_setup_failed=false
+    local webhook_create_failed=false
     if [ -n "$github_client_id" ]; then
-        echo "  → Setting up GitHub webhook..."
+        echo "  → Creating GitHub webhook..."
         # Run in subshell to catch exit without stopping app creation
         # Pass repository to avoid requiring app JSON to exist
-        (webhook_setup "$username" "$repository" 2>&1) || webhook_setup_failed=true
+        (webhook_create "$username" "$repository" 2>&1) || webhook_create_failed=true
     fi
-    
-    # Setup log rotation
-    echo "  → Setting up log rotation..."
-    setup_log_rotation "$username"
+
+    # Create log rotation
+    echo "  → Creating log rotation..."
+    create_log_rotation "$username"
     
     # Ensure web permissions are maintained
     find "$home_dir/current" -type d -exec chmod 750 {} \; 2>/dev/null || true
@@ -253,9 +253,9 @@ app_create() {
         configure_app_for_reverb "$username"
     fi
     
-    # Setup crontab for user
-    echo "  → Setting up crontab..."
-    setup_user_crontab "$username"
+    # Create crontab for user
+    echo "  → Creating crontab..."
+    create_user_crontab "$username"
     
     # Reload nginx to pick up new group membership
     echo "  → Reloading Nginx..."
@@ -299,8 +299,8 @@ EOF
         echo ""
     fi
     
-    # Show manual webhook instructions only if auto-setup failed or wasn't attempted
-    if [ "$webhook_setup_failed" = true ] || [ -z "$github_client_id" ]; then
+    # Show manual webhook instructions only if auto-create failed or wasn't attempted
+    if [ "$webhook_create_failed" = true ] || [ -z "$github_client_id" ]; then
         echo -e "${CYAN}${BOLD}GitHub Webhook (Auto-Deploy):${NC}"
         local webhook_domain=$(get_config "webhook_domain")
         if [ -n "$webhook_domain" ]; then
@@ -313,8 +313,8 @@ EOF
         echo -e "Secret:        ${CYAN}$webhook_secret${NC}"
         echo -e "Events:        ${CYAN}Just the push event${NC}"
         echo ""
-        if [ "$webhook_setup_failed" = true ]; then
-            echo -e "${YELLOW}Automatic webhook setup failed. Please configure manually:${NC}"
+        if [ "$webhook_create_failed" = true ]; then
+            echo -e "${YELLOW}Automatic webhook creation failed. Please configure manually:${NC}"
         fi
         echo -e "${CYAN}${BOLD}Next Steps:${NC}"
         echo -e "1. Configure GitHub webhook with the above settings"
@@ -816,8 +816,8 @@ delete_domain_by_app() {
     fi
 }
 
-# Helper: Setup user crontab
-setup_user_crontab() {
+# Helper: Create user crontab
+create_user_crontab() {
     local username=$1
     local home_dir="/home/$username"
     
@@ -831,8 +831,8 @@ setup_user_crontab() {
     fi
 }
 
-# Helper: Setup log rotation
-setup_log_rotation() {
+# Helper: Create log rotation
+create_log_rotation() {
     local username=$1
     local log_dir="/home/$username/logs"
     

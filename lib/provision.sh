@@ -1,10 +1,10 @@
 #!/bin/bash
 
 #############################################
-# Provision Functions - Full App Setup
+# Provision Functions - Full App Creation
 #############################################
 
-# Provision create - full app setup (app + domain + database + .env + SSL + deploy)
+# Provision create - full app creation (app + domain + database + .env + SSL + deploy)
 provision_create() {
     local username=""
     local repository=""

@@ -136,14 +136,14 @@ webhook_delete() {
     echo ""
 }
 
-# Automatically setup webhook on GitHub using Device Flow
-webhook_setup() {
+# Automatically create webhook on GitHub using Device Flow
+webhook_create() {
     local username=$1
     local repository=$2  # Optional: can be passed to avoid requiring app JSON
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi webhook setup <username> [repository]"
+        echo "Usage: cipi webhook create <username> [repository]"
         exit 1
     fi
     
@@ -179,9 +179,9 @@ webhook_setup() {
     
     local webhook_url="https://$webhook_domain/webhook/$username"
     
-    # Use shared function from git.sh to setup the webhook
-    if ! github_setup_webhook "$repository" "$webhook_url" "$webhook_secret"; then
-        echo "Please try again: ${CYAN}cipi webhook setup $username${NC}"
+    # Use shared function from git.sh to create the webhook
+    if ! github_create_webhook "$repository" "$webhook_url" "$webhook_secret"; then
+        echo "Please try again: ${CYAN}cipi webhook create $username${NC}"
         exit 1
     fi
     

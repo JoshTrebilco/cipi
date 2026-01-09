@@ -142,8 +142,8 @@ EOF
 }
 
 
-# Main setup function
-reverb_setup() {
+# Main create function
+reverb_create() {
     local username="reverb"
     local repository=""
     local domain=""
@@ -182,7 +182,7 @@ reverb_setup() {
     # Interactive prompts
     if [ -z "$repository" ] || [ -z "$domain" ]; then
         interactive=true
-        echo -e "${BOLD}Reverb WebSocket Server Setup${NC}"
+        echo -e "${BOLD}Reverb WebSocket Server Creation${NC}"
         echo "─────────────────────────────────────"
         echo ""
         
@@ -391,7 +391,7 @@ reverb_setup() {
     
     # Display summary
     echo ""
-    echo -e "${GREEN}${BOLD}Reverb setup complete!${NC}"
+    echo -e "${GREEN}${BOLD}Reverb creation complete!${NC}"
     echo "─────────────────────────────────────"
     echo -e "App:        ${CYAN}$username${NC}"
     echo -e "Domain:     ${CYAN}https://$domain${NC}"
@@ -409,7 +409,7 @@ reverb_show() {
     if ! reverb_is_configured; then
         echo -e "${YELLOW}Reverb is not configured${NC}"
         echo ""
-        echo "Run: cipi reverb setup"
+        echo "Run: cipi reverb create"
         return 1
     fi
     
@@ -435,7 +435,7 @@ reverb_start() {
     if ! reverb_is_configured; then
         echo -e "${RED}Error: Reverb is not configured${NC}"
         echo ""
-        echo "Run: cipi reverb setup"
+        echo "Run: cipi reverb create"
         exit 1
     fi
     
