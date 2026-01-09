@@ -411,12 +411,14 @@ provision_delete() {
     local username=""
     local dbname=""
     local force=false
+    local skip_db_prompt=false
     
     # Parse arguments
     for arg in "$@"; do
         case $arg in
             --dbname=*)
                 dbname="${arg#*=}"
+                skip_db_prompt=true
                 ;;
             --force)
                 force=true
@@ -450,6 +452,32 @@ provision_delete() {
     
     # Get domain info for display
     local domain=$(get_domain_by_app "$username")
+    
+    # Prompt for database deletion if not specified and databases exist
+    if [ -z "$dbname" ] && [ "$skip_db_prompt" = false ] && [ "$force" = false ]; then
+        local databases=$(json_keys "${DATABASES_FILE}")
+        if [ -n "$databases" ]; then
+            echo -e "${BOLD}Database Deletion${NC}"
+            echo "─────────────────────────────────────"
+            echo ""
+            echo "Available databases:"
+            local db_array=()
+            local i=1
+            for db in $databases; do
+                echo -e "  $i. ${CYAN}$db${NC}"
+                db_array+=("$db")
+                ((i++))
+            done
+            echo ""
+            read -p "Delete a database? (Enter number, or press Enter to skip): " db_choice
+            
+            if [ -n "$db_choice" ] && [ "$db_choice" -gt 0 ] 2>/dev/null && [ "$db_choice" -le "${#db_array[@]}" ]; then
+                dbname="${db_array[$((db_choice-1))]}"
+                echo -e "Selected database: ${CYAN}$dbname${NC}"
+            fi
+            echo ""
+        fi
+    fi
     
     # Show what will be deleted
     echo -e "${BOLD}Provision Delete${NC}"
