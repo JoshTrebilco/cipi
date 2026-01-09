@@ -231,7 +231,7 @@ database_delete() {
     fi
     
     # Confirm deletion
-    echo -e "${YELLOW}${BOLD}Warning: This will permanently delete the database and all its data!${NC}"
+    echo -e "${YELLOW}${BOLD}Warning: This will permanently delete the ${CYAN}$dbname${YELLOW}${BOLD} database and all its data!${NC}"
     read -p "Type the database name to confirm: " confirm
     
     if [ "$confirm" != "$dbname" ]; then
