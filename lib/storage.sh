@@ -137,16 +137,20 @@ generate_username() {
 }
 
 # Generate secure password
-# Excludes characters that are problematic in .env files:
-# - # (comment character)
-# - $ (variable substitution)
-# - " and ' (quotes)
-# - ` (backtick)
-# - \ (escape character)
+# Only includes characters that are safe everywhere:
+# - Alphanumeric: A-Z, a-z, 0-9
+# - Safe special chars: @ % + - _ = (no shell/sed/env conflicts)
+#
+# Excluded problematic characters:
+# - # $ " ' ` \ (shell/env special chars)
+# - | / (sed delimiters)
+# - & ; < > (shell operators)
+# - ( ) [ ] { } (shell grouping/expansion)
+# - * ? ! ~ ^ : (shell wildcards/expansion)
 # - spaces and whitespace
 generate_password() {
     local length=${1:-24}
-    tr -dc 'A-Za-z0-9!@%^&*()_+{}|:<>?=-' < /dev/urandom | head -c "$length"
+    tr -dc 'A-Za-z0-9@%+_=-' < /dev/urandom | head -c "$length"
 }
 
 #############################################
