@@ -4,8 +4,8 @@
 # Webhook Management Functions
 #############################################
 
-WEBHOOK_HANDLER="/opt/cipi/web/webhook.php"
-WEBHOOK_LOG="/var/log/cipi/webhook.log"
+WEBHOOK_HANDLER="/opt/faber/web/webhook.php"
+WEBHOOK_LOG="/var/log/faber/webhook.log"
 
 # Generate webhook secret for an app
 generate_webhook_secret() {
@@ -18,7 +18,7 @@ webhook_regenerate_secret() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi webhook regenerate <username>"
+        echo "Usage: faber webhook regenerate <username>"
         exit 1
     fi
     
@@ -52,7 +52,7 @@ webhook_show() {
     
     if [ -z "$secret" ]; then
         echo -e "${YELLOW}No webhook secret configured for this app.${NC}"
-        echo -e "Run: ${CYAN}cipi webhook regenerate $username${NC}"
+        echo -e "Run: ${CYAN}faber webhook regenerate $username${NC}"
         return
     fi
     
@@ -83,7 +83,7 @@ webhook_delete() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi webhook delete <username> [repository]"
+        echo "Usage: faber webhook delete <username> [repository]"
         exit 1
     fi
     
@@ -143,7 +143,7 @@ webhook_create() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi webhook create <username> [repository]"
+        echo "Usage: faber webhook create <username> [repository]"
         exit 1
     fi
     
@@ -181,7 +181,7 @@ webhook_create() {
     
     # Use shared function from git.sh to create the webhook
     if ! github_create_webhook "$repository" "$webhook_url" "$webhook_secret"; then
-        echo "Please try again: ${CYAN}cipi webhook create $username${NC}"
+        echo "Please try again: ${CYAN}faber webhook create $username${NC}"
         exit 1
     fi
     

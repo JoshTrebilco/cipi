@@ -192,7 +192,7 @@ stack_create() {
     if [ -z "$username" ] || [ -z "$repository" ]; then
         echo -e "${RED}Error: Username and repository are required${NC}"
         echo ""
-        echo "Usage: cipi stack create [options]"
+        echo "Usage: faber stack create [options]"
         echo ""
         echo "Run without arguments for interactive mode, or provide options:"
         echo ""
@@ -352,7 +352,7 @@ stack_create() {
             else
                 echo -e "  → ${YELLOW}Deployment had issues (exit code: $deploy_exit)${NC}"
                 echo -e "  ${YELLOW}Full log: cat $deploy_log${NC}"
-                echo -e "  ${YELLOW}Re-run:   cipi deploy $username${NC}"
+                echo -e "  ${YELLOW}Re-run:   faber deploy $username${NC}"
             fi
             
             # Fix log ownership
@@ -400,9 +400,9 @@ stack_create() {
     
     echo ""
     echo -e "${BOLD}Next Steps${NC}"
-    echo -e "• Edit .env: ${CYAN}cipi app env $username${NC}"
-    echo -e "• View app: ${CYAN}cipi app show $username${NC}"
-    echo -e "• Deploy: ${CYAN}cipi deploy $username${NC}"
+    echo -e "• Edit .env: ${CYAN}faber app env $username${NC}"
+    echo -e "• View app: ${CYAN}faber app show $username${NC}"
+    echo -e "• Deploy: ${CYAN}faber deploy $username${NC}"
     echo ""
 }
 
@@ -433,7 +433,7 @@ stack_delete() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi stack delete <username> [--dbname=DBNAME] [--force]"
+        echo "Usage: faber stack delete <username> [--dbname=DBNAME] [--force]"
         exit 1
     fi
     

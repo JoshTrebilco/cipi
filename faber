@@ -1,19 +1,19 @@
 #!/bin/bash
 
 #############################################
-# Cipi - Server Management CLI
-# Version: 4.0.0
-# Author: Andrea Pollastri
+# Faber - Server Management CLI
+# Version: 1.0.0
+# Author: Josh Trebilco
 # License: MIT
 #############################################
 
 set -e
 
 # Paths
-CIPI_LIB_DIR="/opt/cipi/lib"
-CIPI_DATA_DIR="/etc/cipi"
-CIPI_BIN="/usr/local/bin/cipi"
-CIPI_VERSION="4.0.0"
+FABER_LIB_DIR="/opt/faber/lib"
+FABER_DATA_DIR="/etc/faber"
+FABER_BIN="/usr/local/bin/faber"
+FABER_VERSION="1.0.0"
 
 # Colors
 RED='\033[0;31m'
@@ -25,8 +25,8 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Load library functions
-if [ -d "${CIPI_LIB_DIR}" ]; then
-    for lib in "${CIPI_LIB_DIR}"/*.sh; do
+if [ -d "${FABER_LIB_DIR}" ]; then
+    for lib in "${FABER_LIB_DIR}"/*.sh; do
         [ -f "$lib" ] && source "$lib"
     done
     # Initialize storage once at startup
@@ -36,7 +36,7 @@ fi
 # Check if running as root
 check_root() {
     if [ "$(id -u)" != "0" ]; then
-        echo -e "${RED}${BOLD}Error: Cipi must be run as root${NC}"
+        echo -e "${RED}${BOLD}Error: Faber must be run as root${NC}"
         echo -e "Please run with sudo or as root user"
         exit 1
     fi
@@ -45,22 +45,26 @@ check_root() {
 # Display logo
 show_logo() {
     echo -e "${GREEN}${BOLD}"
-    echo " ██████ ██ ██████  ██"
-    echo "██      ██ ██   ██ ██"
-    echo "██      ██ ██████  ██"
-    echo "██      ██ ██      ██"
-    echo " ██████ ██ ██      ██"
+    echo " _______ _______ ______  _______ ______  "
+    echo "(_______|_______|____  \(_______|_____ \ "
+    echo " _____   _______ ____)  )_____   _____) )"
+    echo "|  ___) |  ___  |  __  (|  ___) |  __  / "
+    echo "| |     | |   | | |__)  ) |_____| |  \ \ "
+    echo "|_|     |_|   |_|______/|_______)_|   |_|"
+    echo ""
+    echo "  Laravel Deployment and Server Manager  "
+    echo ""
     echo -e "${NC}"
 }
 
 # Display version
 show_version() {
     show_logo
-    echo -e "Version: ${CYAN}${CIPI_VERSION}${NC}"
+    echo -e "Version: ${CYAN}${FABER_VERSION}${NC}"
     
     # Show commit hash if available
-    if [ -f "/etc/cipi/version.json" ]; then
-        local commit=$(jq -r '.commit // empty' /etc/cipi/version.json 2>/dev/null)
+    if [ -f "/etc/faber/version.json" ]; then
+        local commit=$(jq -r '.commit // empty' /etc/faber/version.json 2>/dev/null)
         if [ -n "$commit" ] && [ "$commit" != "null" ]; then
             echo -e "Commit:  ${CYAN}${commit:0:7}${NC}"
         fi

@@ -7,8 +7,8 @@
 # Generate bash completion script
 generate_bash_completion() {
     cat <<'EOF'
-# Cipi bash completion
-_cipi() {
+# Faber bash completion
+_faber() {
     local cur prev
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
@@ -47,8 +47,8 @@ _cipi() {
                 COMPREPLY=($(compgen -W "bash" -- "$cur"))
                 ;;
             deploy)
-                if [ -f /etc/cipi/apps.json ]; then
-                    COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/cipi/apps.json 2>/dev/null)" -- "$cur"))
+                if [ -f /etc/faber/apps.json ]; then
+                    COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/faber/apps.json 2>/dev/null)" -- "$cur"))
                 fi
                 ;;
         esac
@@ -57,8 +57,8 @@ _cipi() {
             stack)
                 case "${COMP_WORDS[2]}" in
                     delete)
-                        if [ -f /etc/cipi/apps.json ]; then
-                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/cipi/apps.json 2>/dev/null)" -- "$cur"))
+                        if [ -f /etc/faber/apps.json ]; then
+                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/faber/apps.json 2>/dev/null)" -- "$cur"))
                         fi
                         ;;
                 esac
@@ -66,8 +66,8 @@ _cipi() {
             app)
                 case "${COMP_WORDS[2]}" in
                     show|edit|env|crontab|password|delete)
-                        if [ -f /etc/cipi/apps.json ]; then
-                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/cipi/apps.json 2>/dev/null)" -- "$cur"))
+                        if [ -f /etc/faber/apps.json ]; then
+                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/faber/apps.json 2>/dev/null)" -- "$cur"))
                         fi
                         ;;
                 esac
@@ -75,8 +75,8 @@ _cipi() {
             database)
                 case "${COMP_WORDS[2]}" in
                     password|delete)
-                        if [ -f /etc/cipi/databases.json ]; then
-                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/cipi/databases.json 2>/dev/null)" -- "$cur"))
+                        if [ -f /etc/faber/databases.json ]; then
+                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/faber/databases.json 2>/dev/null)" -- "$cur"))
                         fi
                         ;;
                 esac
@@ -98,8 +98,8 @@ _cipi() {
             webhook)
                 case "${COMP_WORDS[2]}" in
                     create|show|regenerate|delete)
-                        if [ -f /etc/cipi/apps.json ]; then
-                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/cipi/apps.json 2>/dev/null)" -- "$cur"))
+                        if [ -f /etc/faber/apps.json ]; then
+                            COMPREPLY=($(compgen -W "$(jq -r 'keys[]' /etc/faber/apps.json 2>/dev/null)" -- "$cur"))
                         fi
                         ;;
                 esac
@@ -110,7 +110,7 @@ _cipi() {
     return 0
 }
 
-complete -F _cipi cipi
+complete -F _faber faber
 EOF
 }
 
@@ -120,7 +120,7 @@ generate_completion() {
     
     if [ "$shell" != "bash" ]; then
         echo -e "${RED}Error: Only bash completion is supported${NC}"
-        echo "Usage: cipi completion [bash]"
+        echo "Usage: faber completion [bash]"
         exit 1
     fi
     

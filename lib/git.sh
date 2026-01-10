@@ -511,7 +511,7 @@ github_create_webhook() {
     if [ -z "$github_client_id" ]; then
         echo -e "${RED}Error: GitHub OAuth Client ID not configured${NC}"
         echo "Run the installer again or set it manually:"
-        echo "  ${CYAN}cipi config set github_client_id <your_client_id>${NC}"
+        echo "  ${CYAN}faber config set github_client_id <your_client_id>${NC}"
         return 1
     fi
     

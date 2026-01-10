@@ -1,8 +1,8 @@
 ---
-description: "Bash scripting conventions used throughout the Cipi codebase"
+description: "Bash scripting conventions used throughout the Faber codebase"
 globs:
   - "*.sh"
-  - "cipi"
+  - "faber"
   - "install.sh"
 alwaysApply: false
 ---

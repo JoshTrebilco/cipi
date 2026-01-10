@@ -114,7 +114,7 @@ validate_reverb_artisan() {
     # Check if vendor directory exists (composer deps installed)
     if [ ! -d "$vendor_dir" ]; then
         echo -e "  ${RED}✗ Composer dependencies not installed (vendor/ missing)${NC}"
-        echo -e "  ${YELLOW}  Run: cipi deploy $username${NC}"
+        echo -e "  ${YELLOW}  Run: faber deploy $username${NC}"
         return 1
     fi
     
@@ -175,7 +175,7 @@ reverb_create() {
     # Check if already configured
     if reverb_is_configured; then
         echo -e "${YELLOW}Reverb is already configured${NC}"
-        echo -e "Run ${CYAN}cipi reverb show${NC} to see configuration"
+        echo -e "Run ${CYAN}faber reverb show${NC} to see configuration"
         exit 1
     fi
     
@@ -384,7 +384,7 @@ reverb_create() {
         echo -e "  ${YELLOW}Troubleshooting:${NC}"
         echo -e "    • Check logs: tail -f $log_file"
         echo -e "    • Check errors: tail -f $error_log"
-        echo -e "    • Manual start: cipi reverb start"
+        echo -e "    • Manual start: faber reverb start"
         echo -e "    • Supervisor status: supervisorctl status reverb-worker"
         echo ""
     fi
@@ -409,7 +409,7 @@ reverb_show() {
     if ! reverb_is_configured; then
         echo -e "${YELLOW}Reverb is not configured${NC}"
         echo ""
-        echo "Run: cipi reverb create"
+        echo "Run: faber reverb create"
         return 1
     fi
     
@@ -435,7 +435,7 @@ reverb_start() {
     if ! reverb_is_configured; then
         echo -e "${RED}Error: Reverb is not configured${NC}"
         echo ""
-        echo "Run: cipi reverb create"
+        echo "Run: faber reverb create"
         exit 1
     fi
     

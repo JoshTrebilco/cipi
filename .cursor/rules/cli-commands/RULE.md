@@ -1,7 +1,7 @@
 ---
 description: "CLI command structure and patterns"
 globs:
-  - "cipi"
+  - "faber"
   - "lib/commands.sh"
   - "lib/help.sh"
 alwaysApply: false
@@ -11,13 +11,13 @@ alwaysApply: false
 
 ## Command Hierarchy
 
-Commands follow this pattern: `cipi {resource} {action} [options]`
+Commands follow this pattern: `faber {resource} {action} [options]`
 
 Examples:
 
-- `cipi app create --user=myapp --repository=git@github.com:user/repo.git`
-- `cipi domain create --domain=example.com --app=myapp`
-- `cipi database create --name=mydb`
+- `faber app create --user=myapp --repository=git@github.com:user/repo.git`
+- `faber domain create --domain=example.com --app=myapp`
+- `faber database create --name=mydb`
 
 ## Main Resources
 

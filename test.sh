@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #############################################
-# Cipi Testing Script
+# Faber Testing Script
 # Tests bash syntax and basic functionality
 #############################################
 
@@ -13,7 +13,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Cipi Testing Suite"
+echo "  Faber Testing Suite"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
@@ -72,7 +72,7 @@ test_exists() {
 
 echo "1. File Existence Tests"
 echo "─────────────────────────────────────"
-test_exists "cipi"
+test_exists "faber"
 test_exists "install.sh"
 test_exists "README.md"
 test_exists "LICENSE"
@@ -91,13 +91,13 @@ echo ""
 
 echo "2. Executable Tests"
 echo "─────────────────────────────────────"
-test_executable "cipi"
+test_executable "faber"
 test_executable "install.sh"
 echo ""
 
 echo "3. Bash Syntax Tests"
 echo "─────────────────────────────────────"
-test_syntax "cipi"
+test_syntax "faber"
 test_syntax "install.sh"
 
 for file in lib/*.sh; do
@@ -109,8 +109,8 @@ echo "4. Content Tests"
 echo "─────────────────────────────────────"
 
 # Test if main script has proper shebang
-echo -n "Testing shebang in cipi ... "
-if head -n 1 cipi | grep -q "#!/bin/bash"; then
+echo -n "Testing shebang in faber ... "
+if head -n 1 faber | grep -q "#!/bin/bash"; then
     echo -e "${GREEN}✓ PASS${NC}"
     ((TESTS_PASSED++))
 else

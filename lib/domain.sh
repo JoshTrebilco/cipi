@@ -25,7 +25,7 @@ create_ssl_certificate() {
     
     if [ -z "$ssl_email" ]; then
         echo -e "  ${YELLOW}⚠ SSL email not configured, skipping SSL creation${NC}"
-        echo -e "  ${YELLOW}Configure with: cipi config set ssl_email your@email.com${NC}"
+        echo -e "  ${YELLOW}Configure with: faber config set ssl_email your@email.com${NC}"
         return 1
     fi
     
@@ -174,7 +174,7 @@ domain_create() {
     if [ -n "$existing_domain" ]; then
         echo -e "${RED}Error: App '$app' already has a domain assigned${NC}"
         echo -e "  Existing domain: ${CYAN}$existing_domain${NC}"
-        echo -e "  Delete the existing domain first: ${CYAN}cipi domain delete $existing_domain${NC}"
+        echo -e "  Delete the existing domain first: ${CYAN}faber domain delete $existing_domain${NC}"
         exit 1
     fi
     
@@ -262,7 +262,7 @@ domain_delete() {
     
     if [ -z "$domain" ]; then
         echo -e "${RED}Error: Domain required${NC}"
-        echo "Usage: cipi domain delete <domain> [--force]"
+        echo "Usage: faber domain delete <domain> [--force]"
         exit 1
     fi
     

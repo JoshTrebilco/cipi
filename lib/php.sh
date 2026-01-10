@@ -66,7 +66,7 @@ install_php_version() {
 # Configure PHP
 configure_php() {
     local version=$1
-    local ini_file="/etc/php/${version}/fpm/conf.d/cipi.ini"
+    local ini_file="/etc/php/${version}/fpm/conf.d/faber.ini"
     
     cat > "$ini_file" <<EOF
 memory_limit = 256M
@@ -143,8 +143,8 @@ php_list() {
     done
     
     echo ""
-    echo -e "${YELLOW}Note:${NC} Use 'cipi app edit <username> --php=X.X' to change PHP version for a specific app"
-    echo -e "      Use 'cipi php switch X.X' to change the global CLI version"
+    echo -e "${YELLOW}Note:${NC} Use 'faber app edit <username> --php=X.X' to change PHP version for a specific app"
+    echo -e "      Use 'faber php switch X.X' to change the global CLI version"
     echo ""
 }
 

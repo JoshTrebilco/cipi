@@ -133,7 +133,7 @@ app_create() {
     
     # Generate SSH key pair for Git
     echo "  → Generating SSH key pair for Git..."
-    sudo -u "$username" ssh-keygen -t rsa -b 4096 -C "${username}@cipi" -f "$home_dir/.ssh/id_rsa" -N "" >/dev/null 2>&1
+    sudo -u "$username" ssh-keygen -t rsa -b 4096 -C "${username}@faber" -f "$home_dir/.ssh/id_rsa" -N "" >/dev/null 2>&1
     cp "$home_dir/.ssh/id_rsa.pub" "$home_dir/gitkey.pub"
     chown "$username:$username" "$home_dir/gitkey.pub"
     chmod 644 "$home_dir/gitkey.pub"
@@ -144,7 +144,7 @@ app_create() {
     
     echo "  → Adding deploy key for SSH access..."
     local public_key=$(cat "$home_dir/gitkey.pub")
-    if ! github_add_deploy_key "$repository" "cipi-$username" "$public_key"; then
+    if ! github_add_deploy_key "$repository" "faber-$username" "$public_key"; then
         echo -e "  ${YELLOW}⚠ Could not add deploy key automatically${NC}"
         echo -e "  ${YELLOW}  Please add this key as a deploy key to your repository:${NC}"
         echo ""
@@ -318,7 +318,7 @@ EOF
         fi
         echo -e "${CYAN}${BOLD}Next Steps:${NC}"
         echo -e "1. Configure GitHub webhook with the above settings"
-        echo -e "2. Assign domain: ${CYAN}cipi domain create${NC}"
+        echo -e "2. Assign domain: ${CYAN}faber domain create${NC}"
         echo ""
     fi
 }
@@ -357,7 +357,7 @@ app_show() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app show <username>"
+        echo "Usage: faber app show <username>"
         exit 1
     fi
     
@@ -431,7 +431,7 @@ app_edit() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app edit <username> --php=X.X"
+        echo "Usage: faber app edit <username> --php=X.X"
         exit 1
     fi
     
@@ -489,7 +489,7 @@ app_edit() {
         echo ""
     else
         echo -e "${RED}Error: No changes specified${NC}"
-        echo "Usage: cipi app edit <username> --php=X.X"
+        echo "Usage: faber app edit <username> --php=X.X"
         exit 1
     fi
 }
@@ -500,7 +500,7 @@ app_env() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app env <username>"
+        echo "Usage: faber app env <username>"
         exit 1
     fi
     
@@ -555,7 +555,7 @@ app_crontab() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app crontab <username>"
+        echo "Usage: faber app crontab <username>"
         exit 1
     fi
     
@@ -602,7 +602,7 @@ app_password() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app password <username> [--password=XXX]"
+        echo "Usage: faber app password <username> [--password=XXX]"
         exit 1
     fi
     
@@ -664,7 +664,7 @@ app_delete() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app delete <username> [--force]"
+        echo "Usage: faber app delete <username> [--force]"
         exit 1
     fi
     
@@ -765,7 +765,7 @@ app_delete() {
     
     # Delete log rotation config
     echo "  → Deleting log rotation config..."
-    rm -f "/etc/logrotate.d/cipi-$username"
+    rm -f "/etc/logrotate.d/faber-$username"
     
     # Delete GitHub webhook and deploy key if OAuth is configured
     local github_client_id=$(get_config "github_client_id")
@@ -776,7 +776,7 @@ app_delete() {
         (webhook_delete "$username" "$repository" 2>&1) || echo "    (GitHub webhook deletion failed or not found)"
         
         echo "  → Deleting GitHub deploy key..."
-        (github_delete_deploy_key "$repository" "cipi-$username" 2>&1) || echo "    (GitHub deploy key deletion failed or not found)"
+        (github_delete_deploy_key "$repository" "faber-$username" 2>&1) || echo "    (GitHub deploy key deletion failed or not found)"
     fi
     
     # Delete local webhook secret
@@ -836,7 +836,7 @@ create_log_rotation() {
     local username=$1
     local log_dir="/home/$username/logs"
     
-    cat > "/etc/logrotate.d/cipi-$username" <<EOF
+    cat > "/etc/logrotate.d/faber-$username" <<EOF
 $log_dir/*.log {
     daily
     rotate 30
@@ -859,7 +859,7 @@ app_rollback() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app rollback <username> [release]"
+        echo "Usage: faber app rollback <username> [release]"
         exit 1
     fi
     
@@ -978,7 +978,7 @@ app_releases() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi app releases <username>"
+        echo "Usage: faber app releases <username>"
         exit 1
     fi
     
@@ -1035,8 +1035,8 @@ app_releases() {
     echo -e "Total releases: ${CYAN}${#releases[@]}${NC}"
     echo ""
     echo -e "${CYAN}Commands:${NC}"
-    echo "  Rollback to previous: cipi app rollback $username"
-    echo "  Rollback to specific: cipi app rollback $username <release>"
+    echo "  Rollback to previous: faber app rollback $username"
+    echo "  Rollback to specific: faber app rollback $username <release>"
     echo ""
 }
 

@@ -158,7 +158,7 @@ add_ssl_to_nginx() {
     # Ensure SSL certificate exists before generating config
     if [ ! -f "/etc/letsencrypt/live/${domain}/fullchain.pem" ]; then
         echo -e "${RED}Error: SSL certificate not found for ${domain}${NC}" >&2
-        echo -e "${YELLOW}Run: cipi domain ssl ${domain}${NC}" >&2
+        echo -e "${YELLOW}Run: faber domain ssl ${domain}${NC}" >&2
         return 1
     fi
     

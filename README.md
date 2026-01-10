@@ -1,4 +1,4 @@
-# Cipi - Laravel Deployment and Server Manager
+# Faber - Laravel Deployment and Server Manager
 
 <p align="center">
   <h1>Work in progress... this is not a stable version!</h1>
@@ -9,15 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/JoshTrebilco/cipi/blob/latest/LICENSE"><img src="https://img.shields.io/github/license/JoshTrebilco/cipi" alt="License"></a>
-  <a href="https://github.com/JoshTrebilco/cipi/stargazers"><img src="https://img.shields.io/github/stars/JoshTrebilco/cipi?style=social" alt="Stars"></a>
+  <a href="https://github.com/JoshTrebilco/faber/blob/latest/LICENSE"><img src="https://img.shields.io/github/license/JoshTrebilco/faber" alt="License"></a>
+  <a href="https://github.com/JoshTrebilco/faber/stargazers"><img src="https://img.shields.io/github/stars/JoshTrebilco/faber?style=social" alt="Stars"></a>
 </p>
 
 ---
 
-## 🚀 What is Cipi?
+## 🚀 What is Faber?
 
-Cipi is a **terminal-driven control panel** designed exclusively for **Laravel developers** who need a secure, production-ready hosting environment.
+Faber is a **terminal-driven control panel** designed exclusively for **Laravel developers** who need a secure, production-ready hosting environment.
 
 ## 🔑 Key Features
 
@@ -35,13 +35,13 @@ Cipi is a **terminal-driven control panel** designed exclusively for **Laravel d
 - 🛡️ Built-in fail2ban + ClamAV antivirus protection
 - 🔐 Secure password management (never stored in plain text)
 
-**No web interface needed** - everything is managed via SSH with the `cipi` command!
+**No web interface needed** - everything is managed via SSH with the `faber` command!
 
 ---
 
-## 🎯 Who is Cipi For?
+## 🎯 Who is Faber For?
 
-Cipi is **specifically designed for Laravel developers** who:
+Faber is **specifically designed for Laravel developers** who:
 
 - ✅ Want a **secure, production-ready** server without complex DevOps knowledge
 - ✅ Need **zero-downtime deployments** without configuring Envoyer or Deployer
@@ -54,7 +54,7 @@ Cipi is **specifically designed for Laravel developers** who:
 
 ### 🔒 Security Level: Production-Grade & Hardened
 
-Cipi implements **production-ready security** with multiple layers of protection:
+Faber implements **production-ready security** with multiple layers of protection:
 
 **System Security:**
 
@@ -62,7 +62,7 @@ Cipi implements **production-ready security** with multiple layers of protection
 - 🔥 **UFW Firewall** - Only ports 22, 80, 443 exposed
 - 🦠 **ClamAV Antivirus** - Daily malware scans of all applications
 - 🔐 **User Isolation** - Each app runs as a separate system user with strict permissions (chmod 750/640)
-- 🔑 **Root-Only CLI** - Cipi commands require sudo for administrative control
+- 🔑 **Root-Only CLI** - Faber commands require sudo for administrative control
 
 **Application Security:**
 
@@ -84,20 +84,20 @@ Cipi implements **production-ready security** with multiple layers of protection
 - 📝 **Comprehensive Logs** - Nginx, PHP-FPM, application, and security logs
 - 🚨 **Antivirus Logs** - Track malware scans and threats
 
-**What Cipi is NOT:**
+**What Faber is NOT:**
 
 - ❌ Not for "Enterprise". It is not intended for applications requiring strict SOC2 or PCI-DSS certifications.
 - ❌ Not a WAF. It is not a traffic-filtering firewall like Cloudflare.
 - ❌ Not a Multi-Server cluster. It is designed for standalone servers, not for load balancing or clusters.
 - ❌ Not for non-PHP applications (Laravel exclusive)
 
-**Verdict:** Cipi provides **production-grade security** suitable for professional Laravel applications, side projects, and small-to-medium businesses. For highly regulated industries or applications requiring compliance certifications, additional security layers may be needed.
+**Verdict:** Faber provides **production-grade security** suitable for professional Laravel applications, side projects, and small-to-medium businesses. For highly regulated industries or applications requiring compliance certifications, additional security layers may be needed.
 
 ---
 
 ## 📋 Prerequisites
 
-Cipi requires a fresh Ubuntu server to host your applications. The following virtual private server providers have been verified:
+Faber requires a fresh Ubuntu server to host your applications. The following virtual private server providers have been verified:
 
 - ✅ DigitalOcean
 - ✅ AWS EC2 (See AWS installation section below)
@@ -129,7 +129,7 @@ Run the following command as root user on your server:
 #### For non AWS servers
 
 ```bash
-wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/install.sh | bash
+wget -O - https://raw.githubusercontent.com/JoshTrebilco/faber/refs/heads/latest/install.sh | bash
 ```
 
 #### For AWS EC2 servers
@@ -139,7 +139,7 @@ wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/
 ```bash
 ssh ubuntu@<your-server-ip>
 sudo -s
-wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/install.sh | bash
+wget -O - https://raw.githubusercontent.com/JoshTrebilco/faber/refs/heads/latest/install.sh | bash
 ```
 
 **Important:**
@@ -147,7 +147,7 @@ wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/
 - Open ports 22, 80, and 443 in your VPS firewall!
 - **Save the MySQL root password** shown during installation!
 - App and database passwords are **never stored** in config files for security. Save them when displayed!
-- Webhook domain cannot be changed after installation, but SSL email can be changed with `cipi config set ssl_email <email>`
+- Webhook domain cannot be changed after installation, but SSL email can be changed with `faber config set ssl_email <email>`
 
 ---
 
@@ -159,10 +159,10 @@ Deploy a production-ready Laravel app with zero-downtime deployments:
 
 ```bash
 # Interactive mode - recommended for first use
-cipi stack create
+faber stack create
 
 # Or non-interactive with all options
-cipi stack create \
+faber stack create \
   --user=myapp \
   --repository=https://github.com/user/repo.git \
   --domain=example.com \
@@ -184,20 +184,20 @@ That's it! One command creates:
 
 ```bash
 # Deployments trigger on push to your designated branch. Alternatively, deploy manually using:
-cipi deploy myapp
+faber deploy myapp
 ```
 
 ### Basic Commands
 
 ```bash
 # Show server status
-cipi status
+faber status
 
 # Show all available commands
-cipi help
+faber help
 
-# Show Cipi version
-cipi version
+# Show Faber version
+faber version
 ```
 
 ### Stack (Full Stack Creation)
@@ -206,10 +206,10 @@ The `stack` command is the **recommended way** to deploy a production-ready Lara
 
 ```bash
 # Create a new stack (interactive - recommended for first use)
-cipi stack create
+faber stack create
 
 # Create a new stack (non-interactive)
-cipi stack create \
+faber stack create \
   --user=myapp \
   --repository=https://github.com/user/repo.git \
   --domain=example.com \
@@ -218,7 +218,7 @@ cipi stack create \
   --dbname=mydb
 
 # Skip optional steps
-cipi stack create \
+faber stack create \
   --user=myapp \
   --repository=https://github.com/user/repo.git \
   --domain=example.com \
@@ -227,10 +227,10 @@ cipi stack create \
   --skip-deploy
 
 # Delete stack and optionally database
-cipi stack delete myapp
+faber stack delete myapp
 
 # Delete stack and database together
-cipi stack delete myapp --dbname=mydb
+faber stack delete myapp --dbname=mydb
 ```
 
 **What Stack Create Does:**
@@ -270,59 +270,59 @@ cipi stack delete myapp --dbname=mydb
 
 ```bash
 # Create a new virtual host (interactive)
-cipi app create
+faber app create
 
 # Create virtual host (non-interactive)
-cipi app create \
+faber app create \
   --user=myapp \
   --repository=https://github.com/laravel/laravel.git \
   --branch=main \
   --php=8.4
 
 # List all virtual hosts
-cipi app list
+faber app list
 
 # Show virtual host details (includes disk space, Git key, webhook info)
-cipi app show myapp
+faber app show myapp
 
 # Change PHP version for a virtual host
-cipi app edit myapp --php=8.3
+faber app edit myapp --php=8.3
 
 # Edit .env file
-cipi app env myapp
+faber app env myapp
 
 # Edit crontab (for Laravel scheduler, backups, etc.)
-cipi app crontab myapp
+faber app crontab myapp
 
 # Change virtual host password
-cipi app password myapp
+faber app password myapp
 
 # Change virtual host password (custom)
-cipi app password myapp --password=MySecurePass123!
+faber app password myapp --password=MySecurePass123!
 
 # Delete virtual host
-cipi app delete myapp
+faber app delete myapp
 ```
 
 ### Domain Management
 
 ```bash
 # Assign a domain (interactive)
-cipi domain create
+faber domain create
 
 # Assign a domain (non-interactive)
-cipi domain create \
+faber domain create \
   --domain=example.com \
   --app=myapp
 
 # List all domains
-cipi domain list
+faber domain list
 
 # Delete a domain
-cipi domain delete example.com
+faber domain delete example.com
 
 # Delete a domain (skip confirmation)
-cipi domain delete example.com --force
+faber domain delete example.com --force
 ```
 
 **Note:** Deleting a domain will revoke and remove the SSL certificate if one exists. The app will still be accessible via its username.
@@ -331,27 +331,27 @@ cipi domain delete example.com --force
 
 ```bash
 # Create a new database (interactive)
-cipi database create
+faber database create
 
 # Create database (non-interactive)
-cipi database create --name=mydb
+faber database create --name=mydb
 
 # List all databases
-cipi database list
+faber database list
 
 # Change database password
-cipi database password mydb
+faber database password mydb
 
 # Change database password (custom)
-cipi database password mydb --password=MyDbPass123!
+faber database password mydb --password=MyDbPass123!
 
 # Delete a database
-cipi database delete mydb
+faber database delete mydb
 ```
 
 **Database Output:**
 
-When creating or changing a database password, Cipi displays:
+When creating or changing a database password, Faber displays:
 
 - Database credentials (name, username, password)
 - Laravel `.env` configuration format
@@ -361,45 +361,45 @@ When creating or changing a database password, Cipi displays:
 
 ```bash
 # List installed PHP versions
-cipi php list
+faber php list
 
 # Install a PHP version
-cipi php install 8.3
+faber php install 8.3
 
 # Switch CLI PHP version
-cipi php switch 8.4
+faber php switch 8.4
 ```
 
 ### Service Management
 
 ```bash
 # Restart nginx
-cipi service restart nginx
+faber service restart nginx
 
 # Restart all PHP-FPM services
-cipi service restart php
+faber service restart php
 
 # Restart MySQL
-cipi service restart mysql
+faber service restart mysql
 
 # Restart Supervisor
-cipi service restart supervisor
+faber service restart supervisor
 
 # Restart Redis
-cipi service restart redis
+faber service restart redis
 ```
 
 ### System Management
 
 ```bash
 # View ClamAV antivirus scan logs
-cipi logs
+faber logs
 
 # View last N lines of antivirus logs
-cipi logs --lines=100
+faber logs --lines=100
 
-# Update Cipi to latest version
-cipi update
+# Update Faber to latest version
+faber update
 ```
 
 ### Webhook Management
@@ -409,7 +409,7 @@ Each app automatically gets a webhook secret for GitHub/GitLab auto-deployment. 
 **To view your webhook configuration, always run:**
 
 ```bash
-cipi webhook show myapp
+faber webhook show myapp
 ```
 
 This command displays:
@@ -422,15 +422,15 @@ This command displays:
 
 ```bash
 # Regenerate webhook secret (invalidates old one)
-cipi webhook regenerate myapp
+faber webhook regenerate myapp
 
 # View webhook logs (live tail)
-cipi webhook logs
+faber webhook logs
 ```
 
 **Setting Up GitHub Webhook:**
 
-1. View your configured webhook: `cipi webhook show myapp`
+1. View your configured webhook: `faber webhook show myapp`
    - This shows the Payload URL, Secret, and all configuration details
    - The webhook domain is set during installation and cannot be changed
 2. In GitHub: Repository → Settings → Webhooks → Add webhook
@@ -442,23 +442,23 @@ cipi webhook logs
 
 ### Configuration Management
 
-Configure global Cipi settings that affect SSL certificates.
+Configure global Faber settings that affect SSL certificates.
 
 ```bash
 # Change SSL email (set during installation, can be changed)
-cipi config set ssl_email your@email.com
+faber config set ssl_email your@email.com
 ```
 
 **Configuration Notes:**
 
-- **SSL Email** - Set during installation and used for all Let's Encrypt SSL certificate requests. Let's Encrypt uses this for certificate expiration notifications. Can be changed at any time using `cipi config set ssl_email <email>`.
-- **Webhook Domain** - Set during installation and cannot be changed afterward. To view the configured webhook domain and URL for an app, run `cipi webhook show <username>`.
+- **SSL Email** - Set during installation and used for all Let's Encrypt SSL certificate requests. Let's Encrypt uses this for certificate expiration notifications. Can be changed at any time using `faber config set ssl_email <email>`.
+- **Webhook Domain** - Set during installation and cannot be changed afterward. To view the configured webhook domain and URL for an app, run `faber webhook show <username>`.
 
 ---
 
 ## 🏗️ App Structure
 
-Cipi uses **zero-downtime deployments** with an Envoyer-style release structure:
+Faber uses **zero-downtime deployments** with an Envoyer-style release structure:
 
 ```
 /home/<username>/
@@ -487,10 +487,10 @@ Cipi uses **zero-downtime deployments** with an Envoyer-style release structure:
 
 **Additional System Files:**
 
-- **Log Rotation:** `/etc/logrotate.d/cipi-<username>` - Automatic log rotation (30 days retention)
+- **Log Rotation:** `/etc/logrotate.d/faber-<username>` - Automatic log rotation (30 days retention)
 - **PHP-FPM Pool:** `/etc/php/<version>/fpm/pool.d/<username>.conf` - PHP-FPM configuration
 - **Nginx Config:** `/etc/nginx/sites-available/<username>` - Nginx virtual host configuration
-- **Webhook Secret:** Stored securely in `/etc/cipi/webhooks.json` (not in user directory)
+- **Webhook Secret:** Stored securely in `/etc/faber/webhooks.json` (not in user directory)
 
 ### Deployment Hooks
 
@@ -533,24 +533,24 @@ Instantly rollback to a previous release:
 
 ```bash
 # List available releases
-cipi app releases <username>
+faber app releases <username>
 
 # Rollback to previous release
-cipi app rollback <username>
+faber app rollback <username>
 
 # Rollback to specific release
-cipi app rollback <username> 20260105120000
+faber app rollback <username> 20260105120000
 ```
 
 ### SSL Certificates
 
-SSL certificates are **automatically configured** when you create a domain. Cipi uses Let's Encrypt to obtain and configure SSL certificates automatically. Certificates are automatically renewed via cron job.
+SSL certificates are **automatically configured** when you create a domain. Faber uses Let's Encrypt to obtain and configure SSL certificates automatically. Certificates are automatically renewed via cron job.
 
 **Note:** For automatic SSL to work, ensure:
 
 - DNS is configured to point your domain to the server
 - Port 80 is accessible from the internet
-- SSL email is set (configured during installation, can be changed with `cipi config set ssl_email <email>`)
+- SSL email is set (configured during installation, can be changed with `faber config set ssl_email <email>`)
 
 ### Private Git Repositories
 
@@ -561,7 +561,7 @@ Each virtual host has its own SSH key pair for accessing private Git repositorie
 cat /home/<username>/gitkey.pub
 
 # Or show it with the app details
-cipi app show <username>
+faber app show <username>
 ```
 
 Copy the public key and add it to your Git provider:
@@ -604,19 +604,19 @@ Copy the public key and add it to your Git provider:
 You can install any PHP version from **5.6 to 8.5** (beta):
 
 ```bash
-cipi php install 8.3
-cipi php install 8.2
-cipi php install 7.4
+faber php install 8.3
+faber php install 8.2
+faber php install 7.4
 ```
 
 ---
 
 ## 🔄 Auto-Updates
 
-Cipi automatically checks for updates via cron job (daily at 5:00 AM). You can also manually update:
+Faber automatically checks for updates via cron job (daily at 5:00 AM). You can also manually update:
 
 ```bash
-cipi update
+faber update
 ```
 
 Updates are pulled from GitHub latest branch.
@@ -628,7 +628,7 @@ Updates are pulled from GitHub latest branch.
 ### Server Status
 
 ```bash
-cipi status
+faber status
 ```
 
 Output:
@@ -661,31 +661,31 @@ redis:      ● running
 
 ## 🗑️ Uninstall
 
-To uninstall Cipi from your server while **keeping all virtual hosts, databases, and websites running**:
+To uninstall Faber from your server while **keeping all virtual hosts, databases, and websites running**:
 
 ```bash
-# Stop and remove Cipi system cron jobs
-sudo crontab -l | grep -v "cipi\|certbot\|freshclam\|apt-get" | sudo crontab -
+# Stop and remove Faber system cron jobs
+sudo crontab -l | grep -v "faber\|certbot\|freshclam\|apt-get" | sudo crontab -
 
-# Remove Cipi executable and scripts
-sudo rm -f /usr/local/bin/cipi
-sudo rm -rf /opt/cipi
+# Remove Faber executable and scripts
+sudo rm -f /usr/local/bin/faber
+sudo rm -rf /opt/faber
 
-# Optional: Remove Cipi configuration data
+# Optional: Remove Faber configuration data
 # WARNING: This removes all domain/app metadata but keeps actual files
-sudo rm -rf /etc/cipi
+sudo rm -rf /etc/faber
 
-# Optional: Remove Cipi log directory
-sudo rm -rf /var/log/cipi
+# Optional: Remove Faber log directory
+sudo rm -rf /var/log/faber
 ```
 
 ### What Gets Removed
 
-✅ Cipi CLI tool (`/usr/local/bin/cipi`)  
-✅ Cipi library scripts (`/opt/cipi/`)  
-✅ Cipi configuration data (`/etc/cipi/`)  
-✅ Cipi cron jobs (SSL renewal, updates, scans)  
-✅ Cipi logs (`/var/log/cipi/`)
+✅ Faber CLI tool (`/usr/local/bin/faber`)  
+✅ Faber library scripts (`/opt/faber/`)  
+✅ Faber configuration data (`/etc/faber/`)  
+✅ Faber cron jobs (SSL renewal, updates, scans)  
+✅ Faber logs (`/var/log/faber/`)
 
 ### What Stays Intact
 
@@ -722,7 +722,7 @@ Your websites will **continue to work normally**. You'll need to manage:
 
   ```bash
   sudo crontab -e
-  # Add: 0 3 * * * /usr/local/bin/cipi-scan
+  # Add: 0 3 * * * /usr/local/bin/faber-scan
   ```
 
 - **Manual Management**: Use standard Linux tools
@@ -735,13 +735,13 @@ Your websites will **continue to work normally**. You'll need to manage:
 
 ### Reinstallation
 
-You can reinstall Cipi at any time without affecting existing sites:
+You can reinstall Faber at any time without affecting existing sites:
 
 ```bash
-wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/install.sh | bash
+wget -O - https://raw.githubusercontent.com/JoshTrebilco/faber/refs/heads/latest/install.sh | bash
 ```
 
-Cipi will detect existing virtual hosts and continue managing them.
+Faber will detect existing virtual hosts and continue managing them.
 
 ---
 
@@ -759,27 +759,27 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-Cipi is open-source software licensed under the [MIT license](LICENSE).
+Faber is open-source software licensed under the [MIT license](LICENSE).
 
 ---
 
 ## 💬 Support
 
-- 🐛 **Bug Reports:** [GitHub Issues](https://github.com/JoshTrebilco/cipi/issues)
-- 💡 **Feature Requests:** [GitHub Issues](https://github.com/JoshTrebilco/cipi/issues)
+- 🐛 **Bug Reports:** [GitHub Issues](https://github.com/JoshTrebilco/faber/issues)
+- 💡 **Feature Requests:** [GitHub Issues](https://github.com/JoshTrebilco/faber/issues)
 
 ---
 
 ## ⭐ Star History
 
-If you find Cipi useful, please consider giving it a star on GitHub!
+If you find Faber useful, please consider giving it a star on GitHub!
 
 ---
 
 ## 🙏 Acknowledgments
 
 - Built by [Josh Trebilco](https://github.com/JoshTrebilco)
-- Forked from Cipi. Built by [Andrea Pollastri](https://github.com/andreapollastri/cipi)
+- Forked from Cipi - Built by [Andrea Pollastri](https://github.com/andreapollastri/cipi)
 - Inspired by server management tools like Forge, RunCloud, and Ploi
 
 ---

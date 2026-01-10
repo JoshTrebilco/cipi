@@ -1,5 +1,5 @@
 ---
-description: "JSON storage patterns for data persistence in Cipi"
+description: "JSON storage patterns for data persistence in Faber"
 globs:
   - "lib/storage.sh"
   - "lib/*.sh"
@@ -10,7 +10,7 @@ alwaysApply: false
 
 ## Storage Location
 
-All data is stored in JSON files at `/etc/cipi/`:
+All data is stored in JSON files at `/etc/faber/`:
 
 - `apps.json` - App configurations
 - `domains.json` - Domain configurations

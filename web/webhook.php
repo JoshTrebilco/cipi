@@ -1,15 +1,15 @@
 <?php
 /**
- * Cipi Centralized Webhook Handler
+ * Faber Centralized Webhook Handler
  *
  * Receives GitHub webhooks, validates signatures using HMAC-SHA256,
  * and triggers deployments for the specified app.
  */
 
 // Configuration
-define('WEBHOOKS_FILE', '/etc/cipi/webhooks.json');
-define('APPS_FILE', '/etc/cipi/apps.json');
-define('LOG_FILE', '/var/log/cipi/webhook.log');
+define('WEBHOOKS_FILE', '/etc/faber/webhooks.json');
+define('APPS_FILE', '/etc/faber/apps.json');
+define('LOG_FILE', '/var/log/faber/webhook.log');
 
 // Ensure log directory exists
 if (!is_dir(dirname(LOG_FILE))) {

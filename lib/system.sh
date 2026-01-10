@@ -4,7 +4,7 @@
 # System Functions
 #############################################
 
-CLAMAV_LOG="/var/log/cipi/clamav-scan.log"
+CLAMAV_LOG="/var/log/faber/clamav-scan.log"
 
 # Get server IP
 get_server_ip() {
@@ -161,7 +161,7 @@ view_antivirus_logs() {
         echo "ClamAV scans run daily at 3 AM automatically."
         echo ""
         echo "To run a manual scan now:"
-        echo -e "  ${CYAN}sudo /usr/local/bin/cipi-scan${NC}"
+        echo -e "  ${CYAN}sudo /usr/local/bin/faber-scan${NC}"
         echo ""
         return
     fi
@@ -178,9 +178,9 @@ view_antivirus_logs() {
     echo ""
     echo "─────────────────────────────────────"
     echo -e "${CYAN}Commands:${NC}"
-    echo "  View more lines:        cipi logs --lines=100"
+    echo "  View more lines:        faber logs --lines=100"
     echo "  Follow live:            sudo tail -f $CLAMAV_LOG"
-    echo "  Run manual scan:        sudo /usr/local/bin/cipi-scan"
+    echo "  Run manual scan:        sudo /usr/local/bin/faber-scan"
     echo "  Update virus database:  sudo freshclam"
     echo ""
 }

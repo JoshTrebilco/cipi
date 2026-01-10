@@ -1,6 +1,6 @@
-# Contributing to Cipi
+# Contributing to Faber
 
-Thank you for considering contributing to Cipi! This document provides guidelines for contributing to the project.
+Thank you for considering contributing to Faber! This document provides guidelines for contributing to the project.
 
 ## How to Contribute
 
@@ -12,7 +12,7 @@ If you find a bug, please create an issue on GitHub with:
 - Steps to reproduce
 - Expected behavior
 - Actual behavior
-- System information (Ubuntu version, Cipi version)
+- System information (Ubuntu version, Faber version)
 - Relevant log files
 
 ### Suggesting Features
@@ -70,20 +70,20 @@ Feature suggestions are welcome! Please create an issue with:
 # Function description
 function_name() {
     local param=$1
-    
+
     if [ -z "$param" ]; then
         echo -e "${RED}Error: Parameter required${NC}"
         return 1
     fi
-    
+
     # Do something
     command_here
-    
+
     if [ $? -ne 0 ]; then
         echo -e "${RED}Error: Command failed${NC}"
         return 1
     fi
-    
+
     echo -e "${GREEN}Success!${NC}"
     return 0
 }
@@ -140,9 +140,8 @@ Violations may result in temporary or permanent ban from the project.
 
 ## Questions?
 
-Feel free to open an issue or contact hello@cipi.sh
+Feel free to open an issue or contact hello@faber.sh
 
 ## License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
-

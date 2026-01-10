@@ -10,7 +10,7 @@ service_restart() {
     
     if [ -z "$service" ]; then
         echo -e "${RED}Error: Service name required${NC}"
-        echo "Usage: cipi service restart <service>"
+        echo "Usage: faber service restart <service>"
         echo ""
         echo "Available services: nginx, php, mysql, supervisor, redis"
         exit 1

@@ -4,7 +4,7 @@
 # Auto-Update Functions
 #############################################
 
-GITHUB_REPO="JoshTrebilco/cipi"
+GITHUB_REPO="JoshTrebilco/faber"
 GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}"
 GITHUB_RAW="https://raw.githubusercontent.com/${GITHUB_REPO}"
 BRANCH="latest"
@@ -42,8 +42,8 @@ count_commits_behind() {
     fi
 }
 
-# Update Cipi
-update_cipi() {
+# Update Faber
+update_faber() {
     local force=false
     
     # Parse arguments
@@ -55,7 +55,7 @@ update_cipi() {
         esac
     done
     
-    echo -e "${BOLD}Cipi Update${NC}"
+    echo -e "${BOLD}Faber Update${NC}"
     echo "─────────────────────────────────────"
     echo ""
     
@@ -85,7 +85,7 @@ update_cipi() {
     
     # Check if update is needed (skip if --force)
     if [ "$force" = false ] && [ -n "$current_commit" ] && [ "$current_commit" != "null" ] && [ "$current_commit" = "$latest_commit" ]; then
-        echo -e "${GREEN}Cipi is already up to date!${NC}"
+        echo -e "${GREEN}Faber is already up to date!${NC}"
         echo -e "${YELLOW}Tip:${NC} Use ${CYAN}--force${NC} to reinstall the current version"
         exit 0
     fi
@@ -109,7 +109,7 @@ update_cipi() {
     fi
     
     echo ""
-    echo -e "${CYAN}Updating Cipi...${NC}"
+    echo -e "${CYAN}Updating Faber...${NC}"
     
     # Create temporary directory
     local tmp_dir=$(mktemp -d)
@@ -126,7 +126,7 @@ update_cipi() {
     fi
     
     # Find extracted directory
-    local extract_dir=$(ls -d cipi-*/ | head -n 1)
+    local extract_dir=$(ls -d faber-*/ | head -n 1)
     
     if [ -z "$extract_dir" ]; then
         echo -e "${RED}Error: Could not find extracted files${NC}"
@@ -136,40 +136,40 @@ update_cipi() {
     
     # Backup current installation
     echo "  → Creating backup..."
-    if [ -f "${CIPI_BIN}" ]; then
-        cp "${CIPI_BIN}" "${CIPI_BIN}.backup"
+    if [ -f "${FABER_BIN}" ]; then
+        cp "${FABER_BIN}" "${FABER_BIN}.backup"
     fi
-    if [ -d "${CIPI_LIB_DIR}" ]; then
-        cp -r "${CIPI_LIB_DIR}" "${CIPI_LIB_DIR}.backup"
+    if [ -d "${FABER_LIB_DIR}" ]; then
+        cp -r "${FABER_LIB_DIR}" "${FABER_LIB_DIR}.backup"
     fi
     
     # Install new version
     echo "  → Installing new version..."
     
     # Copy main script
-    if [ -f "${tmp_dir}/${extract_dir}/cipi" ]; then
-        cp "${tmp_dir}/${extract_dir}/cipi" "${CIPI_BIN}"
-        chmod 700 "${CIPI_BIN}"
-        chown root:root "${CIPI_BIN}"
+    if [ -f "${tmp_dir}/${extract_dir}/faber" ]; then
+        cp "${tmp_dir}/${extract_dir}/faber" "${FABER_BIN}"
+        chmod 700 "${FABER_BIN}"
+        chown root:root "${FABER_BIN}"
     fi
     
     # Copy library files
     if [ -d "${tmp_dir}/${extract_dir}/lib" ]; then
-        mkdir -p "${CIPI_LIB_DIR}"
-        cp -r "${tmp_dir}/${extract_dir}/lib"/* "${CIPI_LIB_DIR}/"
-        chmod 700 "${CIPI_LIB_DIR}"/*.sh
-        chmod 755 "${CIPI_LIB_DIR}/release.sh"  # Must be readable by app users for deploy.sh
-        chmod 711 /opt/cipi "${CIPI_LIB_DIR}"   # Traversable but not listable
-        chown -R root:root "${CIPI_LIB_DIR}"
+        mkdir -p "${FABER_LIB_DIR}"
+        cp -r "${tmp_dir}/${extract_dir}/lib"/* "${FABER_LIB_DIR}/"
+        chmod 700 "${FABER_LIB_DIR}"/*.sh
+        chmod 755 "${FABER_LIB_DIR}/release.sh"  # Must be readable by app users for deploy.sh
+        chmod 711 /opt/faber "${FABER_LIB_DIR}"   # Traversable but not listable
+        chown -R root:root "${FABER_LIB_DIR}"
     fi
 
     # Copy web files (webhook.php, etc.)
     if [ -d "${tmp_dir}/${extract_dir}/web" ]; then
-        mkdir -p /opt/cipi/web
-        cp -r "${tmp_dir}/${extract_dir}/web"/* /opt/cipi/web/
-        chmod 644 /opt/cipi/web/*.php           # Readable by www-data for nginx/php-fpm
-        chmod 711 /opt/cipi/web                 # Traversable but not listable
-        chown -R root:root /opt/cipi/web
+        mkdir -p /opt/faber/web
+        cp -r "${tmp_dir}/${extract_dir}/web"/* /opt/faber/web/
+        chmod 644 /opt/faber/web/*.php           # Readable by www-data for nginx/php-fpm
+        chmod 711 /opt/faber/web                 # Traversable but not listable
+        chown -R root:root /opt/faber/web
     fi
     
     # Update version file with new commit
@@ -178,11 +178,11 @@ update_cipi() {
     
     # Install bash completion
     echo "  → Installing bash completion..."
-    if [ -f "${CIPI_LIB_DIR}/completion.sh" ]; then
+    if [ -f "${FABER_LIB_DIR}/completion.sh" ]; then
         # Source the completion functions
-        source "${CIPI_LIB_DIR}/completion.sh" 2>/dev/null || true
+        source "${FABER_LIB_DIR}/completion.sh" 2>/dev/null || true
         if type generate_bash_completion >/dev/null 2>&1; then
-            local completion_file="/etc/bash_completion.d/cipi"
+            local completion_file="/etc/bash_completion.d/faber"
             mkdir -p /etc/bash_completion.d
             generate_bash_completion > "$completion_file" 2>/dev/null || true
             if [ -f "$completion_file" ]; then
@@ -198,22 +198,22 @@ update_cipi() {
     
     echo ""
     if [ "$force" = true ] && [ "$current_commit" = "$latest_commit" ]; then
-        echo -e "${GREEN}${BOLD}Cipi reinstalled successfully!${NC}"
+        echo -e "${GREEN}${BOLD}Faber reinstalled successfully!${NC}"
         echo -e "Commit: ${CYAN}${latest_commit:0:7}${NC}"
     else
-        echo -e "${GREEN}${BOLD}Cipi updated successfully!${NC}"
+        echo -e "${GREEN}${BOLD}Faber updated successfully!${NC}"
         echo -e "New commit: ${CYAN}${latest_commit:0:7}${NC}"
     fi
     echo ""
-    if [ -f "${CIPI_BIN}.backup" ]; then
-        echo "Backup saved at: ${CIPI_BIN}.backup"
+    if [ -f "${FABER_BIN}.backup" ]; then
+        echo "Backup saved at: ${FABER_BIN}.backup"
     fi
-    if [ -d "${CIPI_LIB_DIR}.backup" ]; then
-        echo "Backup saved at: ${CIPI_LIB_DIR}.backup"
+    if [ -d "${FABER_LIB_DIR}.backup" ]; then
+        echo "Backup saved at: ${FABER_LIB_DIR}.backup"
     fi
     echo ""
     echo -e "${YELLOW}Tip:${NC} Open a new terminal for tab completion, or run:"
-    echo -e "     ${CYAN}source /etc/bash_completion.d/cipi${NC}"
+    echo -e "     ${CYAN}source /etc/bash_completion.d/faber${NC}"
     echo ""
     
     # Exit after successful update to prevent any further execution
@@ -244,7 +244,7 @@ check_updates() {
         fi
         return 0
     else
-        echo "Cipi is up to date (${current_commit:0:7})"
+        echo "Faber is up to date (${current_commit:0:7})"
         return 1
     fi
 }

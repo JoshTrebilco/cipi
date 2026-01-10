@@ -90,13 +90,13 @@ finished() {
 # DO NOT EDIT BELOW THIS LINE
 # Core deployment logic is handled by release.sh
 #############################################
-CIPI_LIB="\${CIPI_LIB:-/opt/cipi/lib}"
-if [ -f "\$CIPI_LIB/release.sh" ]; then
-    source "\$CIPI_LIB/release.sh"
+FABER_LIB="\${FABER_LIB:-/opt/faber/lib}"
+if [ -f "\$FABER_LIB/release.sh" ]; then
+    source "\$FABER_LIB/release.sh"
     run_deployment
 else
-    echo "Error: release.sh not found at \$CIPI_LIB/release.sh"
-    echo "Please ensure Cipi is properly installed."
+    echo "Error: release.sh not found at \$FABER_LIB/release.sh"
+    echo "Please ensure Faber is properly installed."
     exit 1
 fi
 DEPLOYEOF

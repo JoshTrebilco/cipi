@@ -147,7 +147,7 @@ database_password() {
     
     if [ -z "$dbname" ]; then
         echo -e "${RED}Error: Database name required${NC}"
-        echo "Usage: cipi database password <name> [--password=XXX]"
+        echo "Usage: faber database password <name> [--password=XXX]"
         exit 1
     fi
     
@@ -221,7 +221,7 @@ database_delete() {
     
     if [ -z "$dbname" ]; then
         echo -e "${RED}Error: Database name required${NC}"
-        echo "Usage: cipi database delete <name>"
+        echo "Usage: faber database delete <name>"
         exit 1
     fi
     

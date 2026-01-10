@@ -25,9 +25,9 @@ cmd_status() {
     echo "─────────────────────────────────────"
     local commit=$(get_version_commit)
     if [ -n "$commit" ]; then
-        echo -e "CIPI:     ${CYAN}v${CIPI_VERSION} (${commit:0:7})${NC}"
+        echo -e "FABER:     ${CYAN}v${FABER_VERSION} (${commit:0:7})${NC}"
     else
-        echo -e "CIPI:     ${CYAN}v${CIPI_VERSION}${NC}"
+        echo -e "FABER:     ${CYAN}v${FABER_VERSION}${NC}"
     fi
     echo -e "IP:       ${CYAN}$(get_server_ip)${NC}"
     echo -e "HOSTNAME: ${CYAN}$(get_hostname)${NC}"
@@ -78,7 +78,7 @@ cmd_config() {
             ;;
         *)
             echo -e "${RED}Unknown config command: $subcmd${NC}"
-            echo "Usage: cipi config {set}"
+            echo "Usage: faber config {set}"
             exit 1
             ;;
     esac
@@ -139,8 +139,8 @@ cmd_app() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi app {create|list|show|edit|env|crontab|password|delete|rollback|releases}"
-            echo "Run 'cipi app --help' for more information"
+            echo "Usage: faber app {create|list|show|edit|env|crontab|password|delete|rollback|releases}"
+            echo "Run 'faber app --help' for more information"
             exit 1
             ;;
     esac
@@ -180,8 +180,8 @@ cmd_domain() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi domain {create|list|delete}"
-            echo "Run 'cipi domain --help' for more information"
+            echo "Usage: faber domain {create|list|delete}"
+            echo "Run 'faber domain --help' for more information"
             exit 1
             ;;
     esac
@@ -224,8 +224,8 @@ cmd_database() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi database {create|list|password|delete}"
-            echo "Run 'cipi database --help' for more information"
+            echo "Usage: faber database {create|list|password|delete}"
+            echo "Run 'faber database --help' for more information"
             exit 1
             ;;
     esac
@@ -265,8 +265,8 @@ cmd_php() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi php {list|install|switch}"
-            echo "Run 'cipi php --help' for more information"
+            echo "Usage: faber php {list|install|switch}"
+            echo "Run 'faber php --help' for more information"
             exit 1
             ;;
     esac
@@ -296,8 +296,8 @@ cmd_service() {
             echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
             echo ""
         fi
-        echo "Usage: cipi service restart <service>"
-        echo "Run 'cipi service --help' for more information"
+        echo "Usage: faber service restart <service>"
+        echo "Run 'faber service --help' for more information"
         exit 1
     fi
     
@@ -335,8 +335,8 @@ cmd_stack() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi stack {create|delete}"
-            echo "Run 'cipi stack --help' for more information"
+            echo "Usage: faber stack {create|delete}"
+            echo "Run 'faber stack --help' for more information"
             exit 1
             ;;
     esac
@@ -382,8 +382,8 @@ cmd_webhook() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi webhook {create|show|regenerate|delete|logs} <username>"
-            echo "Run 'cipi webhook --help' for more information"
+            echo "Usage: faber webhook {create|show|regenerate|delete|logs} <username>"
+            echo "Run 'faber webhook --help' for more information"
             exit 1
             ;;
     esac
@@ -432,8 +432,8 @@ cmd_reverb() {
                 echo -e "Did you mean: ${CYAN}$suggestion${NC}?"
                 echo ""
             fi
-            echo "Usage: cipi reverb {create|show|start|stop|restart|delete}"
-            echo "Run 'cipi reverb --help' for more information"
+            echo "Usage: faber reverb {create|show|start|stop|restart|delete}"
+            echo "Run 'faber reverb --help' for more information"
             exit 1
             ;;
     esac
@@ -450,7 +450,7 @@ cmd_deploy() {
     
     if [ -z "$username" ]; then
         echo -e "${RED}Error: Username required${NC}"
-        echo "Usage: cipi deploy <username>"
+        echo "Usage: faber deploy <username>"
         exit 1
     fi
     
@@ -488,6 +488,6 @@ cmd_update() {
         exit 0
     fi
     
-    update_cipi "$@"
+    update_faber "$@"
 }
 
