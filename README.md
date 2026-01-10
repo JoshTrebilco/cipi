@@ -1,4 +1,4 @@
-# Cipi - Server Management CLI
+# Cipi - Laravel Deployment and Server Manager
 
 <p align="center">
   <h1>Work in progress... this is not a stable version!</h1>
@@ -17,7 +17,9 @@
 
 ## 🚀 What is Cipi?
 
-Cipi is a **CLI-based server control panel** designed exclusively for **Laravel developers** who need a secure, production-ready hosting environment on Ubuntu VPS. With Cipi, you can:
+Cipi is a **terminal-driven control panel** designed exclusively for **Laravel developers** who need a secure, production-ready hosting environment.
+
+## 🔑 Key Features
 
 - ⚡ One-command stack creation (app + domain + database + SSL + deploy)
 - 🎯 Built for Laravel with scheduler, queues, and production .env setup
@@ -39,7 +41,7 @@ Cipi is a **CLI-based server control panel** designed exclusively for **Laravel 
 
 ## 🎯 Who is Cipi For?
 
-Cipi is **specifically designed for Laravel applications** and developers who:
+Cipi is **specifically designed for Laravel developers** who:
 
 - ✅ Want a **secure, production-ready** server without complex DevOps knowledge
 - ✅ Need **zero-downtime deployments** without configuring Envoyer or Deployer
@@ -84,16 +86,27 @@ Cipi implements **production-ready security** with multiple layers of protection
 
 **What Cipi is NOT:**
 
-- ❌ Not for "enterprise" with compliance certifications (SOC2, PCI-DSS)
-- ❌ Not a WAF (Web Application Firewall) like Cloudflare
-- ❌ Not high-availability clustering or load balancing
-- ❌ Not for non-PHP applications (only Laravel/PHP)
+- ❌ Not for "Enterprise". It is not intended for applications requiring strict SOC2 or PCI-DSS certifications.
+- ❌ Not a WAF. It is not a traffic-filtering firewall like Cloudflare.
+- ❌ Not a Multi-Server cluster. It is designed for standalone servers, not for load balancing or clusters.
+- ❌ Not for non-PHP applications (Laravel exclusive)
 
 **Verdict:** Cipi provides **production-grade security** suitable for professional Laravel applications, side projects, and small-to-medium businesses. For highly regulated industries or applications requiring compliance certifications, additional security layers may be needed.
 
 ---
 
-## 📋 Requirements
+## 📋 Prerequisites
+
+Cipi requires a fresh Ubuntu server to host your applications. The following virtual private server providers have been verified:
+
+- ✅ DigitalOcean
+- ✅ AWS EC2 (See AWS installation section below)
+- ✅ Vultr
+- ✅ Linode
+- ✅ Hetzner
+- ✅ Google Cloud
+
+#### System Specifications
 
 - **Ubuntu 24.04 LTS** (or higher)
 - Fresh server installation recommended
@@ -101,22 +114,9 @@ Cipi implements **production-ready security** with multiple layers of protection
 - Root access (sudo)
 - Public IPv4 address
 
-### VPS Providers Tested
-
-- ✅ DigitalOcean
-- ✅ AWS EC2
-- ✅ Vultr
-- ✅ Linode
-- ✅ Hetzner
-- ✅ Google Cloud
-
 ---
 
 ## ⚡ Quick Installation
-
-```bash
-wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/install.sh | bash
-```
 
 Installation takes approximately **10-15 minutes** depending on your server's internet speed.
 You will be prompted for:
@@ -124,9 +124,17 @@ You will be prompted for:
 - **Webhook domain** - A domain for webhook endpoints (e.g., `webhooks.yourdomain.com`)
 - **SSL email** - Email address for Let's Encrypt SSL certificates
 
-### AWS Installation
+Run the following command as root user on your server:
 
-AWS disables root login by default. Use this method:
+#### For non AWS servers
+
+```bash
+wget -O - https://raw.githubusercontent.com/JoshTrebilco/cipi/refs/heads/latest/install.sh | bash
+```
+
+#### For AWS EC2 servers
+
+(AWS disables root login by default)
 
 ```bash
 ssh ubuntu@<your-server-ip>
@@ -175,7 +183,7 @@ That's it! One command creates:
 - ✅ Log rotation and Laravel scheduler cron
 
 ```bash
-# Future deploys happen automatically via webhook, or manually:
+# Deployments trigger on push to your designated branch. Alternatively, deploy manually using:
 cipi deploy myapp
 ```
 
